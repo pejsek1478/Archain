@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}New Entry{% endblock %}
+
+{% block content %}
+<section class="form-card">
+  <h2>New diary entry</h2>
+  <form method="post" enctype="multipart/form-data" class="stack" action="{{ form_action }}">
+    <label>
+      Title
+      <input type="text" name="title" value="{{ entry.title if entry }}" required />
+    </label>
+
+    <label>
+      Entry time
+      <input type="datetime-local" name="event_time" value="{{ event_time_value }}" />
+      <span class="helper">Leave blank to use the current log time.</span>
+    </label>
+
+    <div class="grid-2">
+      <label>
+        Location label
+        <input type="text" name="location_label" placeholder="Unit 3, Trench B" value="{{ entry.location_label if entry }}" />
+      </label>
+      <label>
+        Context / Layer
+        <input type="text" name="context" placeholder="Context 42" value="{{ entry.context if entry }}" />
+      </label>
+    </div>
+
+    <div class="grid-2">
+      <label>
+        Latitude
+        <input type="text" name="latitude" id="latitude" placeholder="52.1" value="{{ entry.latitude if entry }}" />
+      </label>
+      <label>
+        Longitude
+        <input type="text" name="longitude" id="longitude" placeholder="13.4" value="{{ entry.longitude if entry }}" />
+      </label>
+    </div>
+
+    <button type="button" class="button ghost" onclick="captureLocation()">Use GPS from device</button>
+
+    <label>
+      Weather / Conditions
+      <input type="text" name="weather" placeholder="Overcast, 14°C" value="{{ entry.weather if entry }}" />
+    </label>
+
+    <label>
+      Field notes
+      <textarea name="notes" rows="6" required>{{ entry.notes if entry }}</textarea>
+    </label>
+
+    <label>
+      Attach photos, 3D models, or field files
+      <input type="file" name="attachments" multiple />
+      <span class="helper">Supports photos, PDFs, GLB/GLTF models, and more.</span>
+    </label>
+
+    <div class="grid-2">
+      <label>
+        Team members (shared access)
+        <select name="users" multiple>
+          {% for user in users %}
+            <option value="{{ user.id }}" {% if entry and user in entry.users %}selected{% endif %}>{{ user.name }} ({{ user.role }})</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>
+        People who found it
+        <select name="people" multiple>
+          {% for person in people %}
+            <option value="{{ person.id }}" {% if entry and person in entry.people %}selected{% endif %}>{{ person.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <button type="submit" class="button">{% if entry %}Update entry{% else %}Save entry{% endif %}</button>
+  </form>
+</section>
+
+<script>
+  function captureLocation() {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported on this device.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition((position) => {
+      document.getElementById('latitude').value = position.coords.latitude.toFixed(6);
+      document.getElementById('longitude').value = position.coords.longitude.toFixed(6);
+    }, () => {
+      alert('Unable to fetch location. Please check permissions.');
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Setup owner{% endblock %}
+
+{% block content %}
+<section class="form-card narrow">
+  <h2>Create owner account</h2>
+  <p class="helper">This form is available only when no users exist. The first account becomes the owner admin.</p>
+  <form method="post" class="stack">
+    <label>
+      Name
+      <input type="text" name="name" required />
+    </label>
+    <label>
+      Password
+      <input type="password" name="password" required />
+    </label>
+    <label>
+      Contact
+      <input type="text" name="contact" placeholder="email or phone" />
+    </label>
+    <button type="submit" class="button">Create owner</button>
+  </form>
+</section>
+{% endblock %}
