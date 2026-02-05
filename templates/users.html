@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Team{% endblock %}
+
+{% block content %}
+<section class="form-card">
+  <h2>Admin panel: add team member</h2>
+  <form method="post" class="stack">
+    <label>
+      Name
+      <input type="text" name="name" required />
+    </label>
+    <label>
+      Password
+      <input type="password" name="password" required />
+    </label>
+    <label>
+      Role
+      <input type="text" name="role" placeholder="Survey lead" />
+    </label>
+    <label>
+      Contact
+      <input type="text" name="contact" placeholder="email or phone" />
+    </label>
+    <label class="inline">
+      <input type="checkbox" name="is_admin" />
+      Admin access
+    </label>
+    <button type="submit" class="button">Save</button>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Team roster</h3>
+  {% if users %}
+    <ul class="list">
+      {% for user in users %}
+        <li>
+          <div>
+            <strong>{{ user.name }}</strong>
+            <span>{{ user.role }}{% if user.is_admin %} · Admin{% endif %}</span>
+            {% if user.contact %}<span class="muted">{{ user.contact }}</span>{% endif %}
+          </div>
+          <div class="actions">
+            <a class="link" href="{{ url_for('edit_user', user_id=user.id) }}">Edit</a>
+            <form method="post" action="{{ url_for('delete_user', user_id=user.id) }}" onsubmit="return confirm('Delete this user?');">
+              <button class="button ghost" type="submit">Delete</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No team members yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
