@@ -1,8 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 
-from functools import wraps
-
 from flask import (
     Flask,
     flash,
@@ -15,7 +13,7 @@ from flask import (
     g,
 )
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -110,7 +108,14 @@ def load_current_user():
 def index():
     if not g.user:
         return redirect(url_for("login"))
-    entries = db.session.execute(select(Entry).order_by(Entry.created_at.desc())).scalars().all()
+    if g.user.is_admin:
+        entries = db.session.execute(select(Entry).order_by(Entry.created_at.desc())).scalars().all()
+    else:
+        entries = db.session.execute(
+            select(Entry)
+            .where(or_(Entry.owner_id == g.user.id, Entry.users.any(User.id == g.user.id)))
+            .order_by(Entry.created_at.desc())
+        ).scalars().all()
     return render_template("index.html", entries=entries)
 
 
@@ -165,7 +170,9 @@ def setup():
 def new_entry():
     if not g.user:
         return redirect(url_for("login"))
-    users = db.session.execute(select(User).order_by(User.name)).scalars().all()
+    users = db.session.execute(
+        select(User).where(User.is_admin.is_(False)).order_by(User.name)
+    ).scalars().all()
     people = db.session.execute(select(Person).order_by(Person.name)).scalars().all()
 
     if request.method == "POST":
@@ -222,7 +229,9 @@ def edit_entry(entry_id):
         flash("You do not have permission to edit this entry.", "warning")
         return redirect(url_for("entry_detail", entry_id=entry.id))
 
-    users = db.session.execute(select(User).order_by(User.name)).scalars().all()
+    users = db.session.execute(
+        select(User).where(User.is_admin.is_(False)).order_by(User.name)
+    ).scalars().all()
     people = db.session.execute(select(Person).order_by(Person.name)).scalars().all()
 
     if request.method == "POST":
@@ -275,6 +284,9 @@ def entry_detail(entry_id):
         return redirect(url_for("index"))
     if not g.user:
         return redirect(url_for("login"))
+    if not _can_view_entry(entry):
+        flash("You do not have access to this entry.", "warning")
+        return redirect(url_for("index"))
     return render_template("entry_detail.html", entry=entry)
 
 
@@ -368,8 +380,8 @@ def delete_user(user_id):
 
 @app.route("/people", methods=["GET", "POST"])
 def manage_people():
-    if not g.user:
-        return redirect(url_for("login"))
+    if not _require_admin():
+        return redirect(url_for("index"))
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         if name:
@@ -432,6 +444,14 @@ def _format_datetime_local(value):
 
 def _can_edit_entry(entry):
     return g.user and (g.user.is_admin or entry.owner_id == g.user.id)
+
+
+def _can_view_entry(entry):
+    if not g.user:
+        return False
+    if g.user.is_admin or entry.owner_id == g.user.id:
+        return True
+    return any(user.id == g.user.id for user in entry.users)
 
 
 def _require_admin():
