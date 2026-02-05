@@ -1,4 +1,4 @@
-# NaPicuNapadJirky
+# Archain Field Diary
 
 A lightweight archaeological field diary built for Raspberry Pi 5 deployments. Log entries with time, GPS, photos, 3D models, and collaboration metadata, then share them with teammates.
 

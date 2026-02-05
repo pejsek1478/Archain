@@ -169,6 +169,40 @@ def manage_users():
     return render_template("users.html", users=users)
 
 
+@app.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
+def edit_user(user_id):
+    user = db.session.get(User, user_id)
+    if not user:
+        flash("User not found.", "warning")
+        return redirect(url_for("manage_users"))
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("Name is required.", "warning")
+            return render_template("edit_user.html", user=user)
+        user.name = name
+        user.role = request.form.get("role", "").strip()
+        user.contact = request.form.get("contact", "").strip()
+        db.session.commit()
+        flash("User updated.", "success")
+        return redirect(url_for("manage_users"))
+
+    return render_template("edit_user.html", user=user)
+
+
+@app.route("/users/<int:user_id>/delete", methods=["POST"])
+def delete_user(user_id):
+    user = db.session.get(User, user_id)
+    if not user:
+        flash("User already removed.", "warning")
+        return redirect(url_for("manage_users"))
+    db.session.delete(user)
+    db.session.commit()
+    flash("User deleted.", "success")
+    return redirect(url_for("manage_users"))
+
+
 @app.route("/people", methods=["GET", "POST"])
 def manage_people():
     if request.method == "POST":

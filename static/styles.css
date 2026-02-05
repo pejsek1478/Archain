@@ -273,6 +273,17 @@ model-viewer {
   border-radius: 12px;
 }
 
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.actions form {
+  margin: 0;
+}
+
 .muted {
   color: var(--muted);
   font-size: 0.9rem;
