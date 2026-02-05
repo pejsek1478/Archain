@@ -11,12 +11,20 @@
       <input type="text" name="name" value="{{ user.name }}" required />
     </label>
     <label>
+      New password
+      <input type="password" name="password" placeholder="Leave blank to keep current" />
+    </label>
+    <label>
       Role
       <input type="text" name="role" value="{{ user.role }}" />
     </label>
     <label>
       Contact
       <input type="text" name="contact" value="{{ user.contact }}" />
+    </label>
+    <label class="inline">
+      <input type="checkbox" name="is_admin" {% if user.is_admin %}checked{% endif %} />
+      Admin access
     </label>
     <div class="actions">
       <button type="submit" class="button">Save changes</button>

@@ -14,10 +14,19 @@
       <h1>Archain Field Diary</h1>
     </div>
     <nav>
-      <a href="{{ url_for('index') }}">Entries</a>
-      <a href="{{ url_for('new_entry') }}">New entry</a>
-      <a href="{{ url_for('manage_users') }}">Team</a>
-      <a href="{{ url_for('manage_people') }}">Finders</a>
+      {% if g.user %}
+        <a href="{{ url_for('index') }}">Entries</a>
+        <a href="{{ url_for('new_entry') }}">New entry</a>
+        <a href="{{ url_for('manage_people') }}">Finders</a>
+        {% if g.user.is_admin %}
+          <a href="{{ url_for('manage_users') }}">Admin panel</a>
+        {% endif %}
+        <form method="post" action="{{ url_for('logout') }}">
+          <button class="link button-link" type="submit">Sign out ({{ g.user.name }})</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('login') }}">Sign in</a>
+      {% endif %}
     </nav>
   </header>
 

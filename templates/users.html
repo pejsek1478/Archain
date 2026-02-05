@@ -4,11 +4,15 @@
 
 {% block content %}
 <section class="form-card">
-  <h2>Add team member</h2>
+  <h2>Admin panel: add team member</h2>
   <form method="post" class="stack">
     <label>
       Name
       <input type="text" name="name" required />
+    </label>
+    <label>
+      Password
+      <input type="password" name="password" required />
     </label>
     <label>
       Role
@@ -17,6 +21,10 @@
     <label>
       Contact
       <input type="text" name="contact" placeholder="email or phone" />
+    </label>
+    <label class="inline">
+      <input type="checkbox" name="is_admin" />
+      Admin access
     </label>
     <button type="submit" class="button">Save</button>
   </form>
@@ -30,7 +38,7 @@
         <li>
           <div>
             <strong>{{ user.name }}</strong>
-            <span>{{ user.role }}</span>
+            <span>{{ user.role }}{% if user.is_admin %} · Admin{% endif %}</span>
             {% if user.contact %}<span class="muted">{{ user.contact }}</span>{% endif %}
           </div>
           <div class="actions">

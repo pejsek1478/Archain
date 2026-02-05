@@ -5,7 +5,7 @@
 {% block content %}
 <section class="form-card">
   <h2>New diary entry</h2>
-  <form method="post" enctype="multipart/form-data" class="stack">
+  <form method="post" enctype="multipart/form-data" class="stack" action="{{ form_action }}">
     <label>
       Title
       <input type="text" name="title" value="{{ entry.title if entry }}" required />
@@ -13,7 +13,7 @@
 
     <label>
       Entry time
-      <input type="datetime-local" name="event_time" />
+      <input type="datetime-local" name="event_time" value="{{ event_time_value }}" />
       <span class="helper">Leave blank to use the current log time.</span>
     </label>
 
@@ -62,7 +62,7 @@
         Team members (shared access)
         <select name="users" multiple>
           {% for user in users %}
-            <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+            <option value="{{ user.id }}" {% if entry and user in entry.users %}selected{% endif %}>{{ user.name }} ({{ user.role }})</option>
           {% endfor %}
         </select>
       </label>
@@ -71,13 +71,13 @@
         People who found it
         <select name="people" multiple>
           {% for person in people %}
-            <option value="{{ person.id }}">{{ person.name }}</option>
+            <option value="{{ person.id }}" {% if entry and person in entry.people %}selected{% endif %}>{{ person.name }}</option>
           {% endfor %}
         </select>
       </label>
     </div>
 
-    <button type="submit" class="button">Save entry</button>
+    <button type="submit" class="button">{% if entry %}Update entry{% else %}Save entry{% endif %}</button>
   </form>
 </section>
 

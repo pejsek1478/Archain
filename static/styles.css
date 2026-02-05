@@ -42,12 +42,21 @@ body {
   display: flex;
   gap: 1.5rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .site-header a {
   color: var(--ink);
   text-decoration: none;
   font-weight: 600;
+}
+
+.button-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
 }
 
 .container {
@@ -155,6 +164,11 @@ body {
   margin-bottom: 2rem;
 }
 
+.form-card.narrow {
+  max-width: 420px;
+  margin: 0 auto 2rem;
+}
+
 .stack {
   display: grid;
   gap: 1.2rem;
@@ -164,6 +178,13 @@ label {
   display: grid;
   gap: 0.4rem;
   font-weight: 600;
+}
+
+label.inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
 }
 
 input,
