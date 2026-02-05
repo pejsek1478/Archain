@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Finders{% endblock %}
+
+{% block content %}
+<section class="form-card">
+  <h2>Add finder</h2>
+  <form method="post" class="stack">
+    <label>
+      Name
+      <input type="text" name="name" required />
+    </label>
+    <label>
+      Affiliation
+      <input type="text" name="affiliation" placeholder="Local museum" />
+    </label>
+    <button type="submit" class="button">Save</button>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Finders list</h3>
+  {% if people %}
+    <ul class="list">
+      {% for person in people %}
+        <li>
+          <strong>{{ person.name }}</strong>
+          {% if person.affiliation %}<span>{{ person.affiliation }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No finders yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
