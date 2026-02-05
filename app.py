@@ -74,9 +74,12 @@ class Attachment(db.Model):
     media_type = db.Column(db.String(120))
 
 
-@app.before_first_request
+@app.before_request
 def initialize_database():
+    if getattr(app, "_db_initialized", False):
+        return
     db.create_all()
+    app._db_initialized = True
 
 
 @app.route("/")
