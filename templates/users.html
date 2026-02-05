@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Team{% endblock %}
+
+{% block content %}
+<section class="form-card">
+  <h2>Add team member</h2>
+  <form method="post" class="stack">
+    <label>
+      Name
+      <input type="text" name="name" required />
+    </label>
+    <label>
+      Role
+      <input type="text" name="role" placeholder="Survey lead" />
+    </label>
+    <label>
+      Contact
+      <input type="text" name="contact" placeholder="email or phone" />
+    </label>
+    <button type="submit" class="button">Save</button>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Team roster</h3>
+  {% if users %}
+    <ul class="list">
+      {% for user in users %}
+        <li>
+          <strong>{{ user.name }}</strong>
+          <span>{{ user.role }}</span>
+          {% if user.contact %}<span class="muted">{{ user.contact }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No team members yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
