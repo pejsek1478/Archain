@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign in{% endblock %}
+
+{% block content %}
+<section class="form-card narrow">
+  <h2>Sign in</h2>
+  <form method="post" class="stack">
+    <label>
+      Name
+      <input type="text" name="name" required />
+    </label>
+    <label>
+      Password
+      <input type="password" name="password" required />
+    </label>
+    <label class="inline">
+      <input type="checkbox" onclick="togglePassword(this)" data-target="password" />
+      Show password
+    </label>
+    <button type="submit" class="button">Sign in</button>
+  </form>
+  <p class="helper">First time? If no users exist, visit <a class="link" href="{{ url_for('setup') }}">/setup</a> to create the owner account.</p>
+</section>
+<script>
+  function togglePassword(checkbox) {
+    const field = document.querySelector('input[name=\"password\"]');
+    field.type = checkbox.checked ? 'text' : 'password';
+  }
+</script>
+{% endblock %}

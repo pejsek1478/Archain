@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Field Diary Entries{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h2>Archain shared excavation diary</h2>
+    <p>Track contexts, GPS points, photos, 3D models, and the people who discovered each find. Built for mobile-first use on site and optimized for Raspberry Pi 5 deployments.</p>
+  </div>
+  <a class="button" href="{{ url_for('new_entry') }}">Log a new entry</a>
+</section>
+
+<form class="search-bar" method="get" action="{{ url_for('index') }}">
+  <input type="search" name="q" placeholder="Search by title, notes, or tags" value="{{ request.args.get('q', '') }}" />
+  <button class="button ghost" type="submit">Search</button>
+  {% if request.args.get('q') %}
+    <a class="link" href="{{ url_for('index') }}">Clear</a>
+  {% endif %}
+</form>
+
+<section class="card-grid">
+  {% if entries %}
+    {% for entry in entries %}
+      <article class="card">
+        <header>
+          <h3>{{ entry.title }}</h3>
+          <p class="muted">
+            Logged {{ (entry.event_time or entry.created_at).strftime('%Y-%m-%d %H:%M') }}
+          </p>
+        </header>
+        <p>{{ entry.notes[:180] }}{% if entry.notes|length > 180 %}...{% endif %}</p>
+        <div class="meta">
+          {% if entry.location_label %}<span>{{ entry.location_label }}</span>{% endif %}
+          {% if entry.latitude and entry.longitude %}<span>📍 {{ entry.latitude }}, {{ entry.longitude }}</span>{% endif %}
+        </div>
+        <footer>
+          <a class="link" href="{{ url_for('entry_detail', entry_id=entry.id) }}">Open entry →</a>
+        </footer>
+      </article>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <h3>No entries yet</h3>
+      <p>Start by capturing your first field note and invite the rest of your team to collaborate.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

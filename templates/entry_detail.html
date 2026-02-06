@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Entry {{ entry.title }}{% endblock %}
+
+{% block content %}
+<section class="detail-header">
+  <div>
+    <p class="kicker">Entry #{{ entry.id }}</p>
+    <h2>{{ entry.title }}</h2>
+    <p class="muted">
+      Logged {{ (entry.event_time or entry.created_at).strftime('%Y-%m-%d %H:%M') }}
+    </p>
+  </div>
+  <div class="actions">
+    {% if g.user and (g.user.is_admin or entry.owner_id == g.user.id) %}
+      <a class="button ghost" href="{{ url_for('edit_entry', entry_id=entry.id) }}">Edit</a>
+      <form method="post" action="{{ url_for('delete_entry', entry_id=entry.id) }}" onsubmit="return confirm('Delete this entry?');">
+        <button class="button danger" type="submit">Delete</button>
+      </form>
+    {% endif %}
+  </div>
+</section>
+
+<div class="detail-grid">
+  <article class="card">
+    <h3>Field notes</h3>
+    <p class="preline">{{ entry.notes }}</p>
+    {% if entry.event_time %}
+      <p><strong>Event time:</strong> {{ entry.event_time.strftime('%Y-%m-%d %H:%M') }}</p>
+    {% endif %}
+    {% if entry.weather %}
+      <p><strong>Weather:</strong> {{ entry.weather }}</p>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <h3>Location</h3>
+    {% if entry.location_label %}
+      <p><strong>Label:</strong> {{ entry.location_label }}</p>
+    {% endif %}
+    {% if entry.latitude and entry.longitude %}
+      <p><strong>Coordinates:</strong> {{ entry.latitude }}, {{ entry.longitude }}</p>
+      <iframe
+        title="Map"
+        class="map"
+        loading="lazy"
+        allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        src="https://maps.google.com/maps?q={{ entry.latitude }},{{ entry.longitude }}&z=14&output=embed">
+      </iframe>
+    {% else %}
+      <p class="muted">No GPS coordinates provided.</p>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <h3>Ownership</h3>
+    {% if entry.owner %}
+      <p><strong>Owner:</strong> {{ entry.owner.name }}</p>
+    {% else %}
+      <p class="muted">Owner not assigned.</p>
+    {% endif %}
+    <h4>Shared with</h4>
+    {% if entry.users %}
+      <ul>
+        {% for user in entry.users %}
+          <li>{{ user.name }} — {{ user.role }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No shared team members listed.</p>
+    {% endif %}
+    {% if entry.tags %}
+      <h4>Tags</h4>
+      <div class="tag-list">
+        {% for tag in entry.tags %}
+          <span class="tag">{{ tag.name }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <h4>People who found it</h4>
+    {% if entry.people %}
+      <ul>
+        {% for person in entry.people %}
+          <li>{{ person.name }}{% if person.affiliation %} ({{ person.affiliation }}){% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No finders attached.</p>
+    {% endif %}
+  </article>
+</div>
+
+<section class="card">
+  <h3>Attachments</h3>
+  {% if entry.attachments %}
+    <div class="attachments">
+      {% for attachment in entry.attachments %}
+        <div class="attachment">
+          <a href="{{ url_for('uploaded_file', filename=attachment.filename) }}" target="_blank">
+            {{ attachment.original_name }}
+          </a>
+          {% if attachment.media_type and 'image' in attachment.media_type %}
+            <img src="{{ url_for('uploaded_file', filename=attachment.filename) }}" alt="{{ attachment.original_name }}" />
+          {% elif attachment.original_name.endswith('.glb') or attachment.original_name.endswith('.gltf') %}
+            <model-viewer src="{{ url_for('uploaded_file', filename=attachment.filename) }}" auto-rotate camera-controls></model-viewer>
+          {% else %}
+            <p class="muted">{{ attachment.media_type or 'file' }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No files attached.</p>
+  {% endif %}
+</section>
+{% endblock %}
