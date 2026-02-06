@@ -12,6 +12,7 @@ A lightweight archaeological field diary built for Raspberry Pi 5 deployments. L
 - Search entries by title, notes, or tags, plus view shared finds on a map.
 - Auto-fill weather from coordinates (via wttr.in) when the weather field is left blank.
 - Toggle between light and dark themes for field conditions.
+- Browse a user directory with profile details, selfies, and linked entries.
 
 ## Quick start
 ```bash

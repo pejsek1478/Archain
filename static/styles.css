@@ -347,6 +347,42 @@ model-viewer {
   border-radius: 12px;
 }
 
+.user-card {
+  text-align: center;
+}
+
+.avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #e9e3d7;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 1rem;
+  overflow: hidden;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.avatar.large {
+  width: 110px;
+  height: 110px;
+  margin: 0;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
 .actions {
   display: flex;
   gap: 0.6rem;

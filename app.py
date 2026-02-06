@@ -52,6 +52,8 @@ class User(db.Model):
     role = db.Column(db.String(120), default="Field Archaeologist")
     contact = db.Column(db.String(120))
     is_admin = db.Column(db.Boolean, default=False)
+    bio = db.Column(db.Text)
+    photo_filename = db.Column(db.String(255))
 
 
 class Person(db.Model):
@@ -382,6 +384,89 @@ def manage_users():
 
     users = db.session.execute(select(User).order_by(User.name)).scalars().all()
     return render_template("users.html", users=users)
+
+
+@app.route("/directory")
+def user_directory():
+    if not g.user:
+        return redirect(url_for("login"))
+    users = db.session.execute(select(User).order_by(User.name)).scalars().all()
+    return render_template("user_directory.html", users=users)
+
+
+@app.route("/users/<int:user_id>")
+def user_profile(user_id):
+    if not g.user:
+        return redirect(url_for("login"))
+    user = db.session.get(User, user_id)
+    if not user:
+        flash("User not found.", "warning")
+        return redirect(url_for("user_directory"))
+    entries_query = select(Entry).where(
+        or_(Entry.owner_id == user.id, Entry.users.any(User.id == user.id))
+    )
+    entries = db.session.execute(entries_query.order_by(Entry.created_at.desc())).scalars().all()
+    return render_template("user_profile.html", profile=user, entries=entries)
+
+
+@app.route("/users/<int:user_id>/profile", methods=["GET", "POST"])
+def edit_profile(user_id):
+    if not g.user:
+        return redirect(url_for("login"))
+    user = db.session.get(User, user_id)
+    if not user:
+        flash("User not found.", "warning")
+        return redirect(url_for("user_directory"))
+    if not (g.user.is_admin or g.user.id == user.id):
+        flash("You do not have permission to edit this profile.", "warning")
+        return redirect(url_for("user_profile", user_id=user.id))
+
+    if request.method == "POST":
+        user.name = request.form.get("name", "").strip() or user.name
+        user.role = request.form.get("role", "").strip()
+        user.contact = request.form.get("contact", "").strip()
+        user.bio = request.form.get("bio", "").strip()
+        file = request.files.get("photo")
+        if file and file.filename:
+            safe_name = _sanitize_filename(file.filename)
+            stored_name = f"user_{user.id}_{int(datetime.utcnow().timestamp())}_{safe_name}"
+            path = UPLOAD_DIR / stored_name
+            file.save(path)
+            user.photo_filename = stored_name
+        db.session.commit()
+        flash("Profile updated.", "success")
+        return redirect(url_for("user_profile", user_id=user.id))
+
+    return render_template("edit_profile.html", profile=user)
+
+
+@app.route("/users/<int:user_id>/password", methods=["POST"])
+def change_password(user_id):
+    if not g.user:
+        return redirect(url_for("login"))
+    user = db.session.get(User, user_id)
+    if not user:
+        flash("User not found.", "warning")
+        return redirect(url_for("user_directory"))
+    if not (g.user.is_admin or g.user.id == user.id):
+        flash("You do not have permission to change this password.", "warning")
+        return redirect(url_for("user_profile", user_id=user.id))
+
+    current_password = request.form.get("current_password", "")
+    new_password = request.form.get("new_password", "")
+    confirm_password = request.form.get("confirm_password", "")
+
+    if g.user.id == user.id and not check_password_hash(user.password_hash, current_password):
+        flash("Current password is incorrect.", "warning")
+        return redirect(url_for("user_profile", user_id=user.id))
+    if not new_password or new_password != confirm_password:
+        flash("New password and confirmation must match.", "warning")
+        return redirect(url_for("user_profile", user_id=user.id))
+
+    user.password_hash = generate_password_hash(new_password)
+    db.session.commit()
+    flash("Password updated.", "success")
+    return redirect(url_for("user_profile", user_id=user.id))
 
 
 @app.route("/users/<int:user_id>/edit", methods=["GET", "POST"])

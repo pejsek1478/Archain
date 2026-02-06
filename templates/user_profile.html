@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ profile.name }}{% endblock %}
+
+{% block content %}
+<section class="detail-header">
+  <div class="user-header">
+    <div class="avatar large">
+      {% if profile.photo_filename %}
+        <img src="{{ url_for('uploaded_file', filename=profile.photo_filename) }}" alt="{{ profile.name }}" />
+      {% else %}
+        <span>{{ profile.name[:1].upper() }}</span>
+      {% endif %}
+    </div>
+    <div>
+      <p class="kicker">User profile</p>
+      <h2>{{ profile.name }}</h2>
+      <p class="muted">{{ profile.role }}</p>
+      {% if profile.contact %}
+        <p class="muted">{{ profile.contact }}</p>
+      {% endif %}
+    </div>
+  </div>
+  {% if g.user and (g.user.is_admin or g.user.id == profile.id) %}
+    <a class="button ghost" href="{{ url_for('edit_profile', user_id=profile.id) }}">Edit profile</a>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>About</h3>
+  {% if profile.bio %}
+    <p class="preline">{{ profile.bio }}</p>
+  {% else %}
+    <p class="muted">No bio provided.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Entries linked to {{ profile.name }}</h3>
+  {% if entries %}
+    <ul class="list">
+      {% for entry in entries %}
+        <li>
+          <strong>{{ entry.title }}</strong>
+          <span class="muted">{{ (entry.event_time or entry.created_at).strftime('%Y-%m-%d %H:%M') }}</span>
+          <a class="link" href="{{ url_for('entry_detail', entry_id=entry.id) }}">Open entry →</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No entries linked to this user yet.</p>
+  {% endif %}
+</section>
+
+{% if g.user and (g.user.is_admin or g.user.id == profile.id) %}
+  <section class="card">
+    <h3>Change password</h3>
+    <form method="post" action="{{ url_for('change_password', user_id=profile.id) }}" class="stack">
+      {% if g.user.id == profile.id %}
+        <label>
+          Current password
+          <input type="password" name="current_password" required />
+        </label>
+      {% endif %}
+      <label>
+        New password
+        <input type="password" name="new_password" required />
+      </label>
+      <label>
+        Confirm new password
+        <input type="password" name="confirm_password" required />
+      </label>
+      <button type="submit" class="button">Update password</button>
+    </form>
+  </section>
+{% endif %}
+{% endblock %}

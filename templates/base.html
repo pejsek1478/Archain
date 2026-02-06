@@ -18,6 +18,7 @@
         <a href="{{ url_for('index') }}">Entries</a>
         <a href="{{ url_for('new_entry') }}">New entry</a>
         <a href="{{ url_for('map_view') }}">Map</a>
+        <a href="{{ url_for('user_directory') }}">Users</a>
         {% if g.user.is_admin %}
           <a href="{{ url_for('manage_people') }}">Finders</a>
           <a href="{{ url_for('manage_users') }}">Admin panel</a>

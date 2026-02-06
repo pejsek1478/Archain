@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit profile{% endblock %}
+
+{% block content %}
+<section class="form-card">
+  <h2>Edit profile</h2>
+  <form method="post" enctype="multipart/form-data" class="stack">
+    <label>
+      Name
+      <input type="text" name="name" value="{{ profile.name }}" required />
+    </label>
+    <label>
+      Role
+      <input type="text" name="role" value="{{ profile.role }}" />
+    </label>
+    <label>
+      Contact
+      <input type="text" name="contact" value="{{ profile.contact }}" />
+    </label>
+    <label>
+      Bio
+      <textarea name="bio" rows="4">{{ profile.bio }}</textarea>
+    </label>
+    <label>
+      Selfie photo
+      <input type="file" name="photo" accept="image/*" />
+    </label>
+    <button type="submit" class="button">Save profile</button>
+  </form>
+</section>
+{% endblock %}
