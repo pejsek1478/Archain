@@ -7,7 +7,9 @@
   <div>
     <p class="kicker">Entry #{{ entry.id }}</p>
     <h2>{{ entry.title }}</h2>
-    <p class="muted">Logged {{ entry.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+    <p class="muted">
+      Logged {{ (entry.event_time or entry.created_at).strftime('%Y-%m-%d %H:%M') }}
+    </p>
   </div>
   <div class="actions">
     {% if g.user and (g.user.is_admin or entry.owner_id == g.user.id) %}
@@ -25,9 +27,6 @@
     <p class="preline">{{ entry.notes }}</p>
     {% if entry.event_time %}
       <p><strong>Event time:</strong> {{ entry.event_time.strftime('%Y-%m-%d %H:%M') }}</p>
-    {% endif %}
-    {% if entry.context %}
-      <p><strong>Context:</strong> {{ entry.context }}</p>
     {% endif %}
     {% if entry.weather %}
       <p><strong>Weather:</strong> {{ entry.weather }}</p>
@@ -71,15 +70,25 @@
     {% else %}
       <p class="muted">No shared team members listed.</p>
     {% endif %}
-    <h4>People who found it</h4>
-    {% if entry.people %}
-      <ul>
-        {% for person in entry.people %}
-          <li>{{ person.name }}{% if person.affiliation %} ({{ person.affiliation }}){% endif %}</li>
+    {% if entry.tags %}
+      <h4>Tags</h4>
+      <div class="tag-list">
+        {% for tag in entry.tags %}
+          <span class="tag">{{ tag.name }}</span>
         {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">No finders attached.</p>
+      </div>
+    {% endif %}
+    {% if g.user and g.user.is_admin %}
+      <h4>People who found it</h4>
+      {% if entry.people %}
+        <ul>
+          {% for person in entry.people %}
+            <li>{{ person.name }}{% if person.affiliation %} ({{ person.affiliation }}){% endif %}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No finders attached.</p>
+      {% endif %}
     {% endif %}
   </article>
 </div>

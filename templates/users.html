@@ -14,6 +14,10 @@
       Password
       <input type="password" name="password" required />
     </label>
+    <label class="inline">
+      <input type="checkbox" onclick="togglePassword(this)" data-target="password" />
+      Show password
+    </label>
     <label>
       Role
       <input type="text" name="role" placeholder="Survey lead" />
@@ -54,4 +58,10 @@
     <p class="muted">No team members yet.</p>
   {% endif %}
 </section>
+<script>
+  function togglePassword(checkbox) {
+    const field = document.querySelector('input[name=\"password\"]');
+    field.type = checkbox.checked ? 'text' : 'password';
+  }
+</script>
 {% endblock %}

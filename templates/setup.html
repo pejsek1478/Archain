@@ -15,6 +15,10 @@
       Password
       <input type="password" name="password" required />
     </label>
+    <label class="inline">
+      <input type="checkbox" onclick="togglePassword(this)" />
+      Show password
+    </label>
     <label>
       Contact
       <input type="text" name="contact" placeholder="email or phone" />
@@ -22,4 +26,10 @@
     <button type="submit" class="button">Create owner</button>
   </form>
 </section>
+<script>
+  function togglePassword(checkbox) {
+    const field = document.querySelector('input[name=\"password\"]');
+    field.type = checkbox.checked ? 'text' : 'password';
+  }
+</script>
 {% endblock %}

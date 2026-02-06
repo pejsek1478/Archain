@@ -11,13 +11,23 @@
   <a class="button" href="{{ url_for('new_entry') }}">Log a new entry</a>
 </section>
 
+<form class="search-bar" method="get" action="{{ url_for('index') }}">
+  <input type="search" name="q" placeholder="Search by title, notes, or tags" value="{{ request.args.get('q', '') }}" />
+  <button class="button ghost" type="submit">Search</button>
+  {% if request.args.get('q') %}
+    <a class="link" href="{{ url_for('index') }}">Clear</a>
+  {% endif %}
+</form>
+
 <section class="card-grid">
   {% if entries %}
     {% for entry in entries %}
       <article class="card">
         <header>
           <h3>{{ entry.title }}</h3>
-          <p class="muted">Logged {{ entry.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+          <p class="muted">
+            Logged {{ (entry.event_time or entry.created_at).strftime('%Y-%m-%d %H:%M') }}
+          </p>
         </header>
         <p>{{ entry.notes[:180] }}{% if entry.notes|length > 180 %}...{% endif %}</p>
         <div class="meta">

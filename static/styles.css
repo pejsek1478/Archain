@@ -276,6 +276,7 @@ model-viewer {
   height: 200px;
   border-radius: 12px;
   background: #e2ddd4;
+  object-fit: cover;
 }
 
 .list {
@@ -303,6 +304,45 @@ model-viewer {
 
 .actions form {
   margin: 0;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.tag {
+  background: #e9efe7;
+  color: var(--accent-dark);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.map-panel {
+  height: 320px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #d5d1c9;
+}
+
+.map-panel.large {
+  height: 520px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.search-bar input {
+  flex: 1 1 240px;
 }
 
 .muted {

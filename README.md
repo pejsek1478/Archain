@@ -3,12 +3,14 @@
 A lightweight archaeological field diary built for Raspberry Pi 5 deployments. Log entries with time, GPS, photos, 3D models, and collaboration metadata, then share them with teammates.
 
 ## Features
-- Add diary entries with timestamp, context, weather, and notes.
+- Add diary entries with timestamp, weather, and notes.
 - Capture GPS coordinates directly from a mobile browser.
 - Attach photos, PDFs, and 3D models (GLB/GLTF) rendered in-browser.
 - Track team members and people who discovered each find.
 - SQLite storage for simple multi-user access on the same network.
 - Require login for all users, with an owner-admin able to manage entries and accounts.
+- Search entries by title, notes, or tags, plus view shared finds on a map.
+- Auto-fill weather from coordinates (via wttr.in) when the weather field is left blank.
 
 ## Quick start
 ```bash

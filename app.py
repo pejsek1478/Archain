@@ -67,17 +67,30 @@ class Entry(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     notes = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     event_time = db.Column(db.DateTime)
     location_label = db.Column(db.String(200))
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
     weather = db.Column(db.String(120))
-    context = db.Column(db.String(200))
     owner = db.relationship("User", backref="owned_entries")
     users = db.relationship("User", secondary=entry_users, backref="entries")
     people = db.relationship("Person", secondary=entry_people, backref="entries")
     attachments = db.relationship("Attachment", backref="entry", cascade="all, delete-orphan")
+    tags = db.relationship("Tag", secondary="entry_tags", backref="entries")
+
+
+entry_tags = db.Table(
+    "entry_tags",
+    db.Column("entry_id", db.Integer, db.ForeignKey("entries.id"), primary_key=True),
+    db.Column("tag_id", db.Integer, db.ForeignKey("tags.id"), primary_key=True),
+)
+
+
+class Tag(db.Model):
+    __tablename__ = "tags"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
 
 
 class Attachment(db.Model):
@@ -102,27 +115,56 @@ def initialize_database():
 def load_current_user():
     user_id = session.get("user_id")
     g.user = db.session.get(User, user_id) if user_id else None
+    if _needs_setup() and request.endpoint not in {"setup", "static"}:
+        return redirect(url_for("setup"))
 
 
 @app.route("/")
 def index():
     if not g.user:
         return redirect(url_for("login"))
+    query = request.args.get("q", "").strip()
     if g.user.is_admin:
-        entries = db.session.execute(select(Entry).order_by(Entry.created_at.desc())).scalars().all()
+        entries_query = select(Entry)
     else:
-        entries = db.session.execute(
-            select(Entry)
-            .where(or_(Entry.owner_id == g.user.id, Entry.users.any(User.id == g.user.id)))
-            .order_by(Entry.created_at.desc())
-        ).scalars().all()
+        entries_query = select(Entry).where(
+            or_(Entry.owner_id == g.user.id, Entry.users.any(User.id == g.user.id))
+        )
+    if query:
+        entries_query = entries_query.where(
+            or_(
+                Entry.title.ilike(f"%{query}%"),
+                Entry.notes.ilike(f"%{query}%"),
+                Entry.tags.any(Tag.name.ilike(f"%{query}%")),
+            )
+        )
+    entries = db.session.execute(entries_query.order_by(Entry.created_at.desc())).scalars().all()
     return render_template("index.html", entries=entries)
+
+
+@app.route("/map")
+def map_view():
+    if not g.user:
+        return redirect(url_for("login"))
+    if g.user.is_admin:
+        entries_query = select(Entry)
+    else:
+        entries_query = select(Entry).where(Entry.users.any(User.id == g.user.id))
+    entries = db.session.execute(entries_query.order_by(Entry.created_at.desc())).scalars().all()
+    mapped_entries = [
+        entry
+        for entry in entries
+        if entry.latitude is not None and entry.longitude is not None
+    ]
+    return render_template("map.html", entries=mapped_entries)
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if g.user:
         return redirect(url_for("index"))
+    if _needs_setup():
+        return redirect(url_for("setup"))
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         password = request.form.get("password", "")
@@ -187,21 +229,30 @@ def new_entry():
             latitude=_safe_float(request.form.get("latitude")),
             longitude=_safe_float(request.form.get("longitude")),
             weather=request.form.get("weather", "").strip(),
-            context=request.form.get("context", "").strip(),
         )
 
         if not entry.title or not entry.notes:
             flash("Title and notes are required.", "warning")
-            return render_template("entry_form.html", users=users, people=people, entry=entry)
+            return render_template(
+                "entry_form.html",
+                users=users,
+                people=people,
+                entry=entry,
+                form_action=url_for("new_entry"),
+                event_time_value=_format_datetime_local(entry.event_time),
+            )
 
         selected_users = request.form.getlist("users")
         selected_people = request.form.getlist("people")
         entry.users = [user for user in users if str(user.id) in selected_users]
-        entry.people = [person for person in people if str(person.id) in selected_people]
+        if g.user.is_admin:
+            entry.people = [person for person in people if str(person.id) in selected_people]
+        entry.tags = _parse_tags(request.form.get("tags", ""))
 
         db.session.add(entry)
         db.session.commit()
 
+        _set_weather_if_missing(entry)
         _save_attachments(entry)
         db.session.commit()
         flash("Entry saved!", "success")
@@ -213,7 +264,7 @@ def new_entry():
         people=people,
         entry=None,
         form_action=url_for("new_entry"),
-        event_time_value="",
+        event_time_value=_format_datetime_local(datetime.now()),
     )
 
 
@@ -243,7 +294,6 @@ def edit_entry(entry_id):
         entry.latitude = _safe_float(request.form.get("latitude"))
         entry.longitude = _safe_float(request.form.get("longitude"))
         entry.weather = request.form.get("weather", "").strip()
-        entry.context = request.form.get("context", "").strip()
 
         if not entry.title or not entry.notes:
             flash("Title and notes are required.", "warning")
@@ -259,8 +309,11 @@ def edit_entry(entry_id):
         selected_users = request.form.getlist("users")
         selected_people = request.form.getlist("people")
         entry.users = [user for user in users if str(user.id) in selected_users]
-        entry.people = [person for person in people if str(person.id) in selected_people]
+        if g.user.is_admin:
+            entry.people = [person for person in people if str(person.id) in selected_people]
+        entry.tags = _parse_tags(request.form.get("tags", ""))
 
+        _set_weather_if_missing(entry)
         _save_attachments(entry)
         db.session.commit()
         flash("Entry updated.", "success")
@@ -468,6 +521,52 @@ def _ensure_first_admin():
     if db.session.execute(select(User)).first():
         return
     app.logger.info("No users found. Visit /setup to create the first admin account.")
+
+
+def _needs_setup():
+    return not db.session.execute(select(User)).first()
+
+
+def _parse_tags(raw_value):
+    tags = []
+    for token in raw_value.split(","):
+        name = token.strip().lower()
+        if not name:
+            continue
+        tag = db.session.execute(select(Tag).where(Tag.name == name)).scalar_one_or_none()
+        if not tag:
+            tag = Tag(name=name)
+            db.session.add(tag)
+        tags.append(tag)
+    return tags
+
+
+def _set_weather_if_missing(entry):
+    if entry.weather or entry.latitude is None or entry.longitude is None:
+        return
+    summary = _fetch_weather(entry.latitude, entry.longitude)
+    if summary:
+        entry.weather = summary
+
+
+def _fetch_weather(latitude, longitude):
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            [
+                "curl",
+                "-s",
+                f"https://wttr.in/{latitude},{longitude}?format=%C+%t",
+            ],
+            check=True,
+            timeout=5,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return ""
+    return result.stdout.strip()
 
 
 if __name__ == "__main__":

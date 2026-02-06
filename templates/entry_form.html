@@ -17,16 +17,10 @@
       <span class="helper">Leave blank to use the current log time.</span>
     </label>
 
-    <div class="grid-2">
-      <label>
-        Location label
-        <input type="text" name="location_label" placeholder="Unit 3, Trench B" value="{{ entry.location_label if entry }}" />
-      </label>
-      <label>
-        Context / Layer
-        <input type="text" name="context" placeholder="Context 42" value="{{ entry.context if entry }}" />
-      </label>
-    </div>
+    <label>
+      Location label
+      <input type="text" name="location_label" placeholder="Unit 3, Trench B" value="{{ entry.location_label if entry }}" />
+    </label>
 
     <div class="grid-2">
       <label>
@@ -39,16 +33,27 @@
       </label>
     </div>
 
-    <button type="button" class="button ghost" onclick="captureLocation()">Use GPS from device</button>
+    <div class="actions">
+      <button type="button" class="button ghost" onclick="captureLocation()">Use GPS from device</button>
+      <span class="helper">Tap the map to place a pin.</span>
+    </div>
+
+    <div id="entry-map" class="map-panel"></div>
 
     <label>
       Weather / Conditions
       <input type="text" name="weather" placeholder="Overcast, 14°C" value="{{ entry.weather if entry }}" />
+      <span class="helper">Leave blank to auto-fetch from coordinates when possible.</span>
     </label>
 
     <label>
       Field notes
       <textarea name="notes" rows="6" required>{{ entry.notes if entry }}</textarea>
+    </label>
+
+    <label>
+      Tags (comma separated)
+      <input type="text" name="tags" placeholder="ceramic, survey, trench-b" value="{% if entry and entry.tags %}{{ entry.tags | map(attribute='name') | join(', ') }}{% endif %}" />
     </label>
 
     <label>
@@ -67,32 +72,74 @@
         </select>
       </label>
 
-      <label>
-        People who found it
-        <select name="people" multiple>
-          {% for person in people %}
-            <option value="{{ person.id }}" {% if entry and person in entry.people %}selected{% endif %}>{{ person.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
+      {% if g.user and g.user.is_admin %}
+        <label>
+          People who found it
+          <select name="people" multiple>
+            {% for person in people %}
+              <option value="{{ person.id }}" {% if entry and person in entry.people %}selected{% endif %}>{{ person.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      {% endif %}
     </div>
 
     <button type="submit" class="button">{% if entry %}Update entry{% else %}Save entry{% endif %}</button>
   </form>
 </section>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+  const latInput = document.getElementById('latitude');
+  const lonInput = document.getElementById('longitude');
+  const eventInput = document.querySelector('input[name="event_time"]');
+
+  if (!eventInput.value) {
+    const now = new Date();
+    eventInput.value = now.toISOString().slice(0, 16);
+  }
+
+  const map = L.map('entry-map').setView([51.505, -0.09], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  let marker = null;
+
+  function updateMarker(lat, lon) {
+    const position = [lat, lon];
+    if (!marker) {
+      marker = L.marker(position).addTo(map);
+    } else {
+      marker.setLatLng(position);
+    }
+    map.setView(position, 14);
+  }
+
   function captureLocation() {
     if (!navigator.geolocation) {
       alert('Geolocation is not supported on this device.');
       return;
     }
     navigator.geolocation.getCurrentPosition((position) => {
-      document.getElementById('latitude').value = position.coords.latitude.toFixed(6);
-      document.getElementById('longitude').value = position.coords.longitude.toFixed(6);
+      latInput.value = position.coords.latitude.toFixed(6);
+      lonInput.value = position.coords.longitude.toFixed(6);
+      updateMarker(position.coords.latitude, position.coords.longitude);
     }, () => {
       alert('Unable to fetch location. Please check permissions.');
     });
+  }
+
+  map.on('click', (event) => {
+    latInput.value = event.latlng.lat.toFixed(6);
+    lonInput.value = event.latlng.lng.toFixed(6);
+    updateMarker(event.latlng.lat, event.latlng.lng);
+  });
+
+  if (latInput.value && lonInput.value) {
+    updateMarker(parseFloat(latInput.value), parseFloat(lonInput.value));
   }
 </script>
 {% endblock %}
