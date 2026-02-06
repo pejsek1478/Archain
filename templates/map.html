@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Map{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h2>Entry map</h2>
+    <p>View every entry shared with you on a single map. Entries without coordinates are hidden.</p>
+  </div>
+</section>
+
+<section class="card">
+  <div id="entry-map" class="map-panel large"></div>
+</section>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const entries = [
+    {% for entry in entries %}
+      {
+        id: {{ entry.id }},
+        title: {{ entry.title|tojson }},
+        lat: {{ entry.latitude }},
+        lon: {{ entry.longitude }},
+        time: {{ (entry.event_time or entry.created_at).strftime('%Y-%m-%d %H:%M')|tojson }}
+      }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  const map = L.map('entry-map');
+  if (entries.length) {
+    map.setView([entries[0].lat, entries[0].lon], 6);
+  } else {
+    map.setView([20, 0], 2);
+  }
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  entries.forEach((entry) => {
+    const marker = L.marker([entry.lat, entry.lon]).addTo(map);
+    marker.bindPopup(`<strong>${entry.title}</strong><br />${entry.time}<br /><a href="/entries/${entry.id}">Open entry</a>`);
+  });
+</script>
+{% endblock %}

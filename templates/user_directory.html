@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h2>Team directory</h2>
+    <p>Browse the archaeologists and collaborators on this project.</p>
+  </div>
+</section>
+
+<section class="card-grid">
+  {% for user in users %}
+    <article class="card user-card">
+      <div class="avatar">
+        {% if user.photo_filename %}
+          <img src="{{ url_for('uploaded_file', filename=user.photo_filename) }}" alt="{{ user.name }}" />
+        {% else %}
+          <span>{{ user.name[:1].upper() }}</span>
+        {% endif %}
+      </div>
+      <h3>{{ user.name }}</h3>
+      <p class="muted">{{ user.role }}</p>
+      {% if user.contact %}
+        <p class="muted">{{ user.contact }}</p>
+      {% endif %}
+      <a class="link" href="{{ url_for('user_profile', user_id=user.id) }}">View profile →</a>
+    </article>
+  {% endfor %}
+</section>
+{% endblock %}
