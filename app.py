@@ -245,8 +245,7 @@ def new_entry():
         selected_users = request.form.getlist("users")
         selected_people = request.form.getlist("people")
         entry.users = [user for user in users if str(user.id) in selected_users]
-        if g.user.is_admin:
-            entry.people = [person for person in people if str(person.id) in selected_people]
+        entry.people = [person for person in people if str(person.id) in selected_people]
         entry.tags = _parse_tags(request.form.get("tags", ""))
 
         db.session.add(entry)
@@ -309,8 +308,7 @@ def edit_entry(entry_id):
         selected_users = request.form.getlist("users")
         selected_people = request.form.getlist("people")
         entry.users = [user for user in users if str(user.id) in selected_users]
-        if g.user.is_admin:
-            entry.people = [person for person in people if str(person.id) in selected_people]
+        entry.people = [person for person in people if str(person.id) in selected_people]
         entry.tags = _parse_tags(request.form.get("tags", ""))
 
         _set_weather_if_missing(entry)
@@ -458,6 +456,18 @@ def uploaded_file(filename):
     if not g.user:
         return redirect(url_for("login"))
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+
+@app.route("/weather")
+def weather_lookup():
+    if not g.user:
+        return {"weather": ""}, 401
+    latitude = _safe_float(request.args.get("lat"))
+    longitude = _safe_float(request.args.get("lon"))
+    if latitude is None or longitude is None:
+        return {"weather": ""}, 400
+    summary = _fetch_weather(latitude, longitude)
+    return {"weather": summary or ""}, 200
 
 
 def _safe_float(value):

@@ -78,17 +78,15 @@
         {% endfor %}
       </div>
     {% endif %}
-    {% if g.user and g.user.is_admin %}
-      <h4>People who found it</h4>
-      {% if entry.people %}
-        <ul>
-          {% for person in entry.people %}
-            <li>{{ person.name }}{% if person.affiliation %} ({{ person.affiliation }}){% endif %}</li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="muted">No finders attached.</p>
-      {% endif %}
+    <h4>People who found it</h4>
+    {% if entry.people %}
+      <ul>
+        {% for person in entry.people %}
+          <li>{{ person.name }}{% if person.affiliation %} ({{ person.affiliation }}){% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No finders attached.</p>
     {% endif %}
   </article>
 </div>

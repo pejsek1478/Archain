@@ -22,6 +22,7 @@
           <a href="{{ url_for('manage_people') }}">Finders</a>
           <a href="{{ url_for('manage_users') }}">Admin panel</a>
         {% endif %}
+        <button class="button ghost theme-toggle" type="button" onclick="toggleTheme()">Theme</button>
         <form method="post" action="{{ url_for('logout') }}">
           <button class="link button-link" type="submit">Sign out ({{ g.user.name }})</button>
         </form>
@@ -44,5 +45,18 @@
 
     {% block content %}{% endblock %}
   </main>
+  <script>
+    const storedTheme = localStorage.getItem('archain-theme');
+    if (storedTheme) {
+      document.body.dataset.theme = storedTheme;
+    }
+
+    function toggleTheme() {
+      const current = document.body.dataset.theme || 'light';
+      const next = current === 'light' ? 'dark' : 'light';
+      document.body.dataset.theme = next;
+      localStorage.setItem('archain-theme', next);
+    }
+  </script>
 </body>
 </html>

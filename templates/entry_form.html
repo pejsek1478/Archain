@@ -42,7 +42,7 @@
 
     <label>
       Weather / Conditions
-      <input type="text" name="weather" placeholder="Overcast, 14°C" value="{{ entry.weather if entry }}" />
+      <input type="text" name="weather" id="weather" placeholder="Overcast, 14°C" value="{{ entry.weather if entry }}" />
       <span class="helper">Leave blank to auto-fetch from coordinates when possible.</span>
     </label>
 
@@ -72,16 +72,14 @@
         </select>
       </label>
 
-      {% if g.user and g.user.is_admin %}
-        <label>
-          People who found it
-          <select name="people" multiple>
-            {% for person in people %}
-              <option value="{{ person.id }}" {% if entry and person in entry.people %}selected{% endif %}>{{ person.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-      {% endif %}
+      <label>
+        People who found it
+        <select name="people" multiple>
+          {% for person in people %}
+            <option value="{{ person.id }}" {% if entry and person in entry.people %}selected{% endif %}>{{ person.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
     </div>
 
     <button type="submit" class="button">{% if entry %}Update entry{% else %}Save entry{% endif %}</button>
@@ -94,6 +92,7 @@
   const latInput = document.getElementById('latitude');
   const lonInput = document.getElementById('longitude');
   const eventInput = document.querySelector('input[name="event_time"]');
+  const weatherInput = document.getElementById('weather');
 
   if (!eventInput.value) {
     const now = new Date();
@@ -127,6 +126,7 @@
       latInput.value = position.coords.latitude.toFixed(6);
       lonInput.value = position.coords.longitude.toFixed(6);
       updateMarker(position.coords.latitude, position.coords.longitude);
+      attemptWeatherLookup();
     }, () => {
       alert('Unable to fetch location. Please check permissions.');
     });
@@ -136,10 +136,29 @@
     latInput.value = event.latlng.lat.toFixed(6);
     lonInput.value = event.latlng.lng.toFixed(6);
     updateMarker(event.latlng.lat, event.latlng.lng);
+    attemptWeatherLookup();
   });
 
   if (latInput.value && lonInput.value) {
     updateMarker(parseFloat(latInput.value), parseFloat(lonInput.value));
+    attemptWeatherLookup();
   }
+
+  function attemptWeatherLookup() {
+    if (!weatherInput.value && latInput.value && lonInput.value) {
+      fetch(`/weather?lat=${latInput.value}&lon=${lonInput.value}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.weather && !weatherInput.value) {
+            weatherInput.value = data.weather;
+          }
+        })
+        .catch(() => {});
+    }
+  }
+
+  setInterval(() => {
+    attemptWeatherLookup();
+  }, 30000);
 </script>
 {% endblock %}

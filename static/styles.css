@@ -13,6 +13,19 @@
   --radius: 18px;
 }
 
+body[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1b1c1b;
+  --card: #262827;
+  --ink: #f0ece6;
+  --muted: #b1aca5;
+  --accent: #7bb38f;
+  --accent-dark: #6da67f;
+  --warning: #6d5b30;
+  --danger: #d67a7a;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -190,15 +203,54 @@ label.inline {
 input,
 textarea,
 select {
-  padding: 0.6rem 0.8rem;
+  padding: clamp(0.5rem, 1.6vw, 0.75rem) clamp(0.6rem, 2.2vw, 0.9rem);
   border-radius: 12px;
   border: 1px solid #d5d1c9;
   font: inherit;
+  font-size: clamp(0.85rem, 3.2vw, 1rem);
   background: #faf8f4;
+  width: 100%;
 }
 
 select {
   min-height: 120px;
+}
+
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] select {
+  border-color: #3a3d3a;
+  background: #1f211f;
+  color: var(--ink);
+}
+
+body[data-theme="dark"] .site-header {
+  background: #202221;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="dark"] .hero,
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .form-card,
+body[data-theme="dark"] .empty-state {
+  background: var(--card);
+}
+
+body[data-theme="dark"] .attachment {
+  background: #1f211f;
+}
+
+body[data-theme="dark"] .map-panel {
+  border-color: #3a3d3a;
+}
+
+body[data-theme="dark"] .tag {
+  background: #2c3a32;
+  color: #cfe6d8;
+}
+
+.theme-toggle {
+  font-size: 0.9rem;
 }
 
 .helper {
