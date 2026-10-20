@@ -1,143 +1,284 @@
 {% extends 'base.html' %}
 
-{% block title %}New Entry{% endblock %}
+{% set editing = entry and entry.id %}
+
+{% block title %}{% if editing %}Edit entry{% else %}New entry{% endif %}{% endblock %}
 
 {% block content %}
-<section class="form-card">
-  <h2>New diary entry</h2>
-  <form method="post" enctype="multipart/form-data" class="stack" action="{{ form_action }}">
-    <label>
-      Title
-      <input type="text" name="title" value="{{ entry.title if entry }}" required />
-    </label>
-
-    <label>
-      Entry time
-      <input type="datetime-local" name="event_time" value="{{ event_time_value }}" />
-      <span class="helper">Leave blank to use the current log time.</span>
-    </label>
-
-    <label>
-      Location label
-      <input type="text" name="location_label" placeholder="Unit 3, Trench B" value="{{ entry.location_label if entry }}" />
-    </label>
-
-    <div class="grid-2">
-      <label>
-        Latitude
-        <input type="text" name="latitude" id="latitude" placeholder="52.1" value="{{ entry.latitude if entry }}" />
-      </label>
-      <label>
-        Longitude
-        <input type="text" name="longitude" id="longitude" placeholder="13.4" value="{{ entry.longitude if entry }}" />
-      </label>
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h1 class="card-title">{% if editing %}Edit diary entry{% else %}New diary entry{% endif %}</h1>
+      {% if editing %}<p class="card-subtitle">Modify your field note</p>{% else %}<p class="card-subtitle">Log a new find, observation, or context</p>{% endif %}
     </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" action="{{ form_action }}" data-upload-form data-max-bytes="{{ max_upload_mb * 1024 * 1024 }}" {% if not editing %}data-draft-key="archain-draft-new"{% endif %}>
+    <div class="field">
+      <label for="title">Title</label>
+      <input type="text" name="title" id="title" value="{{ entry.title if entry }}" required placeholder="e.g. Ceramic sherds in Trench B" />
+    </div>
+
+    <div class="field-row two">
+      <div class="field">
+        <label for="event_time">Entry time</label>
+        <input type="datetime-local" name="event_time" id="event_time" value="{{ event_time_value }}" />
+        <small class="helper">Leave blank for current time</small>
+      </div>
+      <div class="field">
+        <label for="location_label">Location label</label>
+        <input type="text" name="location_label" id="location_label" placeholder="Unit 3, Trench B" value="{{ entry.location_label if entry }}" />
+      </div>
+    </div>
+
+    <div class="field-row two">
+      <div class="field">
+        <label for="latitude">Latitude</label>
+        <input type="text" name="latitude" id="latitude" placeholder="52.1" value="{{ entry.latitude if entry }}" />
+      </div>
+      <div class="field">
+        <label for="longitude">Longitude</label>
+        <input type="text" name="longitude" id="longitude" placeholder="13.4" value="{{ entry.longitude if entry }}" />
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="actions" style="margin-bottom: 8px;">
+        <button type="button" class="btn btn-ghost btn-sm" id="gps-button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+          Use GPS from device
+        </button>
+      </div>
+      <small class="helper" id="gps-status">Or tap the map below to place a pin</small>
+    </div>
+
+    <div class="field">
+      <div id="entry-map" class="map-frame" style="height: 320px;"></div>
+    </div>
+
+    <div class="field">
+      <label for="weather">Weather / Conditions</label>
+      <input type="text" name="weather" id="weather" placeholder="Overcast, 14°C" value="{{ entry.weather if entry }}" />
+      <small class="helper">Leave blank to auto-fetch from coordinates</small>
+    </div>
+
+    <div class="field">
+      <label for="notes">Field notes</label>
+      <textarea name="notes" id="notes" rows="8" required placeholder="Describe the find, context, observations…">{{ entry.notes if entry }}</textarea>
+    </div>
+
+    <div class="field">
+      <label for="tags">Tags (comma separated)</label>
+      <input type="text" name="tags" id="tags" placeholder="ceramic, survey, trench-b" value="{% if entry and entry.tags %}{{ entry.tags | map(attribute='name') | join(', ') }}{% endif %}" />
+    </div>
+
+    {% if ai_enabled %}
+    <div class="field" id="ai-suggest" data-url="{{ url_for('assistant_suggest') }}">
+      <div class="actions" style="margin-bottom: 8px;">
+        <button type="button" class="btn btn-ghost btn-sm" id="suggest-button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 8V4H8"/><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+          Suggest title & tags
+        </button>
+      </div>
+      <small class="helper" id="suggest-status">Uses local AI model to analyze your notes</small>
+      <div class="chips" id="suggest-results" hidden></div>
+    </div>
+    {% endif %}
+
+    {% if editing and entry.attachments %}
+    <fieldset class="field">
+      <legend style="font-weight: 600; margin-bottom: 12px; display: block;">Current attachments ({{ entry.attachments|length }})</legend>
+      <ul class="file-list">
+        {% for attachment in entry.attachments %}
+        <li class="file-item">
+          <div class="file-thumb" aria-hidden="true">
+            {% if attachment.kind == 'image' %}IMG{% elif attachment.kind == 'model' %}3D{% elif attachment.kind == 'pdf' %}PDF{% else %}FILE{% endif %}
+          </div>
+          <div class="file-meta">
+            <a class="file-name" href="{{ url_for('uploaded_file', filename=attachment.filename) }}" target="_blank" rel="noopener">{{ attachment.original_name }}</a>
+            <span class="file-size">{{ attachment.media_type or 'file' }}</span>
+          </div>
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: 400; color: var(--muted); cursor: pointer; font-size: 13px;">
+            <input type="checkbox" name="remove_attachments" value="{{ attachment.id }}" /> Remove
+          </label>
+        </li>
+        {% endfor %}
+      </ul>
+      <small class="helper">Ticked files are deleted on update</small>
+    </fieldset>
+    {% endif %}
+
+    <div class="field">
+      <legend style="font-weight: 600; margin-bottom: 12px; display: block;">{% if editing %}Add more files{% else %}Photos, 3D models, field files{% endif %}</legend>
+
+      <div class="dropzone dropzone-ui" id="dropzone">
+        <strong>Drop files here</strong> or use the buttons below
+        <div class="actions" style="justify-content: center; margin-top: 16px;">
+          <button type="button" class="btn btn-ghost btn-sm" id="pick-button">Choose files</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="camera-button" hidden>Take photo</button>
+        </div>
+        <small class="helper" style="margin-top: 12px; display: block;">Multiple picks add up. Paste screenshots with Ctrl+V. Supports photos, PDFs, GLB/GLTF models.</small>
+      </div>
+
+      <input type="file" name="attachments" id="attachments-input" multiple hidden />
+      <input type="file" id="pick-input" multiple hidden />
+      <input type="file" id="camera-input" accept="image/*" capture="environment" hidden />
+
+      <ul class="file-list" id="file-list"></ul>
+      <small class="helper" id="file-summary"></small>
+      <p class="form-error" id="file-notice" role="status" hidden></p>
+    </div>
+
+    <div class="field-row two">
+      <div class="field">
+        <label for="users">Team members (shared access)</label>
+        <div class="multi-select">
+          <div class="multi-select-trigger" role="combobox" aria-expanded="false" aria-haspopup="listbox" tabindex="0">
+            <div class="multi-select-tags"></div>
+            <span class="multi-select-placeholder">Select team members…</span>
+            <svg class="multi-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="multi-select-dropdown" role="listbox">
+            <input type="text" class="multi-select-search" placeholder="Filter team members…" aria-label="Filter team members" />
+            <ul class="multi-select-options" role="listbox">
+              {% for user in users %}
+              <li class="multi-select-option" role="option" tabindex="0">
+                <input type="checkbox" value="{{ user.id }}" {% if entry and user in entry.users %}checked{% endif %} />
+                <span class="multi-select-option-label">{{ user.name }} ({{ user.role }})</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          <select name="users" id="users" multiple style="display:none;">
+            {% for user in users %}
+              <option value="{{ user.id }}" {% if entry and user in entry.users %}selected{% endif %}>{{ user.name }} ({{ user.role }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="people">People who found it</label>
+        <div class="multi-select">
+          <div class="multi-select-trigger" role="combobox" aria-expanded="false" aria-haspopup="listbox" tabindex="0">
+            <div class="multi-select-tags"></div>
+            <span class="multi-select-placeholder">Select finders…</span>
+            <svg class="multi-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="multi-select-dropdown" role="listbox">
+            <input type="text" class="multi-select-search" placeholder="Filter finders…" aria-label="Filter finders" />
+            <ul class="multi-select-options" role="listbox">
+              {% for person in people %}
+              <li class="multi-select-option" role="option" tabindex="0">
+                <input type="checkbox" value="{{ person.id }}" {% if entry and person in entry.people %}checked{% endif %} />
+                <span class="multi-select-option-label">{{ person.name }}{% if person.affiliation %}<span class="multi-select-option-affiliation">{{ person.affiliation }}</span>{% endif %}</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          <select name="people" id="people" multiple style="display:none;">
+            {% for person in people %}
+              <option value="{{ person.id }}" {% if entry and person in entry.people %}selected{% endif %}>{{ person.name }}{% if person.affiliation %} — {{ person.affiliation }}{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="field upload-progress" id="upload-progress" hidden>
+      <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+      <div class="actions">
+        <small class="helper" id="progress-text">Uploading…</small>
+        <button type="button" class="btn btn-ghost btn-sm" id="cancel-upload">Cancel</button>
+      </div>
+    </div>
+
+    <p class="form-error" id="form-error" role="alert" hidden></p>
 
     <div class="actions">
-      <button type="button" class="button ghost" onclick="captureLocation()">Use GPS from device</button>
-      <span class="helper">Tap the map to place a pin.</span>
+      <button type="submit" class="btn btn-primary" id="save-button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        {% if editing %}Update entry{% else %}Save entry{% endif %}
+      </button>
+      <small class="helper" style="align-self: center;">Ctrl+Enter saves</small>
     </div>
-
-    <div id="entry-map" class="map-panel"></div>
-
-    <label>
-      Weather / Conditions
-      <input type="text" name="weather" id="weather" placeholder="Overcast, 14°C" value="{{ entry.weather if entry }}" />
-      <span class="helper">Leave blank to auto-fetch from coordinates when possible.</span>
-    </label>
-
-    <label>
-      Field notes
-      <textarea name="notes" rows="6" required>{{ entry.notes if entry }}</textarea>
-    </label>
-
-    <label>
-      Tags (comma separated)
-      <input type="text" name="tags" placeholder="ceramic, survey, trench-b" value="{% if entry and entry.tags %}{{ entry.tags | map(attribute='name') | join(', ') }}{% endif %}" />
-    </label>
-
-    <label>
-      Attach photos, 3D models, or field files
-      <input type="file" name="attachments" multiple />
-      <span class="helper">Supports photos, PDFs, GLB/GLTF models, and more.</span>
-    </label>
-
-    <div class="grid-2">
-      <label>
-        Team members (shared access)
-        <select name="users" multiple>
-          {% for user in users %}
-            <option value="{{ user.id }}" {% if entry and user in entry.users %}selected{% endif %}>{{ user.name }} ({{ user.role }})</option>
-          {% endfor %}
-        </select>
-      </label>
-
-      <label>
-        People who found it
-        <select name="people" multiple>
-          {% for person in people %}
-            <option value="{{ person.id }}" {% if entry and person in entry.people %}selected{% endif %}>{{ person.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-    </div>
-
-    <button type="submit" class="button">{% if entry %}Update entry{% else %}Save entry{% endif %}</button>
   </form>
-</section>
+</div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='attachments.js') }}"></script>
+<script src="{{ url_for('static', filename='multi-select.js') }}"></script>
+{% if ai_enabled %}<script src="{{ url_for('static', filename='ai-suggest.js') }}"></script>{% endif %}
+
 <script>
+  const form = document.querySelector('form[data-upload-form]');
   const latInput = document.getElementById('latitude');
   const lonInput = document.getElementById('longitude');
-  const eventInput = document.querySelector('input[name="event_time"]');
   const weatherInput = document.getElementById('weather');
+  const gpsButton = document.getElementById('gps-button');
+  const gpsStatus = document.getElementById('gps-status');
+  const saveButton = document.getElementById('save-button');
+  const eventInput = document.querySelector('input[name="event_time"]');
 
   if (!eventInput.value) {
     const now = new Date();
-    eventInput.value = now.toISOString().slice(0, 16);
+    eventInput.value = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
 
-  const map = L.map('entry-map').setView([51.505, -0.09], 4);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
+  const mapElement = document.getElementById('entry-map');
+  let map = null;
   let marker = null;
 
+  if (typeof L !== 'undefined') {
+    map = L.map('entry-map').setView([51.505, -0.09], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    map.on('click', (event) => {
+      latInput.value = event.latlng.lat.toFixed(6);
+      lonInput.value = event.latlng.lng.toFixed(6);
+      updateMarker(event.latlng.lat, event.latlng.lng);
+      attemptWeatherLookup();
+    });
+  } else {
+    mapElement.textContent = 'Map unavailable (no internet?). GPS or manual entry still works.';
+    mapElement.style.display = 'flex';
+    mapElement.style.alignItems = 'center';
+    mapElement.style.justifyContent = 'center';
+    mapElement.style.color = 'var(--muted)';
+  }
+
   function updateMarker(lat, lon) {
+    if (!map) return;
     const position = [lat, lon];
-    if (!marker) {
-      marker = L.marker(position).addTo(map);
-    } else {
-      marker.setLatLng(position);
-    }
+    if (!marker) { marker = L.marker(position).addTo(map); }
+    else { marker.setLatLng(position); }
     map.setView(position, 14);
   }
 
+  const gpsErrors = {
+    1: 'Location blocked. Allow it for this site, or tap the map.',
+    2: 'Position unavailable. Try outside, or tap the map.',
+    3: 'Locating timed out. Try again, or tap the map.'
+  };
+
   function captureLocation() {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported on this device.');
-      return;
-    }
+    if (!navigator.geolocation) { gpsStatus.textContent = 'Geolocation not supported. Tap the map.'; return; }
+    gpsButton.disabled = true; gpsButton.textContent = 'Locating…'; gpsStatus.textContent = '';
     navigator.geolocation.getCurrentPosition((position) => {
       latInput.value = position.coords.latitude.toFixed(6);
       lonInput.value = position.coords.longitude.toFixed(6);
       updateMarker(position.coords.latitude, position.coords.longitude);
+      gpsStatus.textContent = `Position set (accuracy ~${Math.round(position.coords.accuracy)} m).`;
+      gpsButton.disabled = false; gpsButton.textContent = 'Use GPS from device';
       attemptWeatherLookup();
-    }, () => {
-      alert('Unable to fetch location. Please check permissions.');
-    });
+    }, (error) => {
+      gpsStatus.textContent = gpsErrors[error.code] || 'Unable to fetch location.';
+      gpsButton.disabled = false; gpsButton.textContent = 'Use GPS from device';
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });
   }
 
-  map.on('click', (event) => {
-    latInput.value = event.latlng.lat.toFixed(6);
-    lonInput.value = event.latlng.lng.toFixed(6);
-    updateMarker(event.latlng.lat, event.latlng.lng);
-    attemptWeatherLookup();
-  });
+  gpsButton.addEventListener('click', captureLocation);
 
   if (latInput.value && lonInput.value) {
     updateMarker(parseFloat(latInput.value), parseFloat(lonInput.value));
@@ -147,18 +288,49 @@
   function attemptWeatherLookup() {
     if (!weatherInput.value && latInput.value && lonInput.value) {
       fetch(`/weather?lat=${latInput.value}&lon=${lonInput.value}`)
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.weather && !weatherInput.value) {
-            weatherInput.value = data.weather;
-          }
-        })
+        .then(r => r.json())
+        .then(data => { if (data.weather && !weatherInput.value) weatherInput.value = data.weather; })
         .catch(() => {});
     }
   }
+  setInterval(attemptWeatherLookup, 30000);
 
-  setInterval(() => {
-    attemptWeatherLookup();
-  }, 30000);
+  // Unsaved changes guard
+  let dirty = false, saved = false;
+  form.addEventListener('input', () => { dirty = true; });
+  form.addEventListener('change', () => { dirty = true; });
+  document.addEventListener('archain:files-changed', () => { dirty = true; });
+  document.addEventListener('archain:saved', () => { saved = true; clearDraft(); });
+  window.addEventListener('beforeunload', e => { if (dirty && !saved) { e.preventDefault(); e.returnValue = ''; } });
+
+  form.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); saveButton.click(); }
+  });
+
+  // Draft autosave (new entries only)
+  const draftKey = form.dataset.draftKey;
+  const draftFields = ['title', 'location_label', 'latitude', 'longitude', 'weather', 'notes', 'tags'];
+  let draftTimer = null;
+
+  function readDraft() { try { return JSON.parse(localStorage.getItem(draftKey)); } catch (e) { return null; } }
+  function clearDraft() { clearTimeout(draftTimer); if (!draftKey) return; try { localStorage.removeItem(draftKey); } catch (e) {} }
+  function saveDraft() {
+    const values = {}; draftFields.forEach(n => { values[n] = form.elements[n].value; });
+    if (!values.title.trim() && !values.notes.trim()) { clearDraft(); return; }
+    try { localStorage.setItem(draftKey, JSON.stringify({ savedAt: Date.now(), values })); } catch (e) {}
+  }
+
+  if (draftKey) {
+    const draft = readDraft();
+    if (draft && draft.values && (draft.values.title || draft.values.notes)) {
+      if (confirm(`Restore draft from ${new Date(draft.savedAt).toLocaleString()}?`)) {
+        draftFields.forEach(n => { if (draft.values[n] !== undefined) form.elements[n].value = draft.values[n]; });
+        if (latInput.value && lonInput.value) updateMarker(parseFloat(latInput.value), parseFloat(lonInput.value));
+        dirty = true;
+      } else { clearDraft(); }
+    }
+    form.addEventListener('input', () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 400); });
+    form.addEventListener('submit', () => { if (!form.classList.contains('enhanced')) clearDraft(); });
+  }
 </script>
 {% endblock %}

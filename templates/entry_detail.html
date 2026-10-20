@@ -1,117 +1,109 @@
 {% extends 'base.html' %}
 
-{% block title %}Entry {{ entry.title }}{% endblock %}
+{% block title %}{{ entry.title }}{% endblock %}
 
 {% block content %}
-<section class="detail-header">
-  <div>
-    <p class="kicker">Entry #{{ entry.id }}</p>
-    <h2>{{ entry.title }}</h2>
-    <p class="muted">
-      Logged {{ (entry.event_time or entry.created_at).strftime('%Y-%m-%d %H:%M') }}
-    </p>
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <div style="flex: 1;">
+      <p class="muted" style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 6px;">Entry #{{ entry.id }}</p>
+      <h1 class="card-title" style="font-size: 28px;">{{ entry.title }}</h1>
+      <p class="card-subtitle">Logged {{ (entry.event_time or entry.created_at).strftime('%Y-%m-%d %H:%M') }}</p>
+    </div>
+    <div class="actions">
+      {% if ai_enabled %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('assistant', entry=entry.id) }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 8V4H8"/><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+          Ask AI
+        </a>
+      {% endif %}
+      {% if g.user and (g.user.is_admin or entry.owner_id == g.user.id) %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('edit_entry', entry_id=entry.id) }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit
+        </a>
+        <form method="post" action="{{ url_for('delete_entry', entry_id=entry.id) }}" onsubmit="return confirm('Delete this entry?');" style="margin:0;">
+          <button class="btn btn-danger btn-sm" type="submit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Delete
+          </button>
+        </form>
+      {% endif %}
+    </div>
   </div>
-  <div class="actions">
-    {% if g.user and (g.user.is_admin or entry.owner_id == g.user.id) %}
-      <a class="button ghost" href="{{ url_for('edit_entry', entry_id=entry.id) }}">Edit</a>
-      <form method="post" action="{{ url_for('delete_entry', entry_id=entry.id) }}" onsubmit="return confirm('Delete this entry?');">
-        <button class="button danger" type="submit">Delete</button>
-      </form>
-    {% endif %}
-  </div>
-</section>
+</div>
 
-<div class="detail-grid">
+<div class="grid two" style="margin-bottom: 24px;">
   <article class="card">
-    <h3>Field notes</h3>
-    <p class="preline">{{ entry.notes }}</p>
-    {% if entry.event_time %}
-      <p><strong>Event time:</strong> {{ entry.event_time.strftime('%Y-%m-%d %H:%M') }}</p>
-    {% endif %}
-    {% if entry.weather %}
-      <p><strong>Weather:</strong> {{ entry.weather }}</p>
-    {% endif %}
+    <div class="card-header"><h2 class="card-title">Field notes</h2></div>
+    <p class="preline" style="white-space: pre-wrap; line-height: 1.7;">{{ entry.notes }}</p>
+    {% if entry.event_time %}<p style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);"><strong>Event time:</strong> {{ entry.event_time.strftime('%Y-%m-%d %H:%M') }}</p>{% endif %}
+    {% if entry.weather %}<p style="margin-top: 12px;"><strong>Weather:</strong> {{ entry.weather }}</p>{% endif %}
   </article>
 
   <article class="card">
-    <h3>Location</h3>
-    {% if entry.location_label %}
-      <p><strong>Label:</strong> {{ entry.location_label }}</p>
-    {% endif %}
+    <div class="card-header"><h2 class="card-title">Location</h2></div>
+    {% if entry.location_label %}<p><strong>Label:</strong> {{ entry.location_label }}</p>{% endif %}
     {% if entry.latitude and entry.longitude %}
-      <p><strong>Coordinates:</strong> {{ entry.latitude }}, {{ entry.longitude }}</p>
-      <iframe
-        title="Map"
-        class="map"
-        loading="lazy"
-        allowfullscreen
-        referrerpolicy="no-referrer-when-downgrade"
-        src="https://maps.google.com/maps?q={{ entry.latitude }},{{ entry.longitude }}&z=14&output=embed">
-      </iframe>
+      <p><strong>GPS:</strong> {{ entry.latitude }}, {{ entry.longitude }}</p>
+      <iframe title="Map" class="map-frame" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q={{ entry.latitude }},{{ entry.longitude }}&z=14&output=embed"></iframe>
     {% else %}
-      <p class="muted">No GPS coordinates provided.</p>
-    {% endif %}
-  </article>
-
-  <article class="card">
-    <h3>Ownership</h3>
-    {% if entry.owner %}
-      <p><strong>Owner:</strong> {{ entry.owner.name }}</p>
-    {% else %}
-      <p class="muted">Owner not assigned.</p>
-    {% endif %}
-    <h4>Shared with</h4>
-    {% if entry.users %}
-      <ul>
-        {% for user in entry.users %}
-          <li>{{ user.name }} — {{ user.role }}</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">No shared team members listed.</p>
-    {% endif %}
-    {% if entry.tags %}
-      <h4>Tags</h4>
-      <div class="tag-list">
-        {% for tag in entry.tags %}
-          <span class="tag">{{ tag.name }}</span>
-        {% endfor %}
-      </div>
-    {% endif %}
-    <h4>People who found it</h4>
-    {% if entry.people %}
-      <ul>
-        {% for person in entry.people %}
-          <li>{{ person.name }}{% if person.affiliation %} ({{ person.affiliation }}){% endif %}</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">No finders attached.</p>
+      <p class="muted" style="padding: 20px 0;">No GPS coordinates provided.</p>
     {% endif %}
   </article>
 </div>
 
-<section class="card">
-  <h3>Attachments</h3>
-  {% if entry.attachments %}
-    <div class="attachments">
-      {% for attachment in entry.attachments %}
-        <div class="attachment">
-          <a href="{{ url_for('uploaded_file', filename=attachment.filename) }}" target="_blank">
-            {{ attachment.original_name }}
-          </a>
-          {% if attachment.media_type and 'image' in attachment.media_type %}
-            <img src="{{ url_for('uploaded_file', filename=attachment.filename) }}" alt="{{ attachment.original_name }}" />
-          {% elif attachment.original_name.endswith('.glb') or attachment.original_name.endswith('.gltf') %}
-            <model-viewer src="{{ url_for('uploaded_file', filename=attachment.filename) }}" auto-rotate camera-controls></model-viewer>
-          {% else %}
-            <p class="muted">{{ attachment.media_type or 'file' }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
+<div class="grid two" style="margin-bottom: 24px;">
+  <article class="card">
+    <div class="card-header"><h2 class="card-title">Details</h2></div>
+    {% if entry.owner %}<p><strong>Owner:</strong> {{ entry.owner.name }}</p>{% endif %}
+    {% if entry.users %}<p><strong>Shared with:</strong> {{ entry.users | map(attribute='name') | join(', ') }}</p>{% endif %}
+    {% if entry.tags %}
+      <p><strong>Tags:</strong></p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+        {% for tag in entry.tags %}<span class="tag">{{ tag.name }}</span>{% endfor %}
+      </div>
+    {% endif %}
+    {% if entry.people %}<p><strong>Finders:</strong> {{ entry.people | map(attribute='name') | join(', ') }}</p>{% endif %}
+  </article>
+
+  <article class="card">
+    <div class="card-header">
+      <h2 class="card-title">Attachments{% if entry.attachments %} ({{ entry.attachments|length }}){% endif %}</h2>
+      {% if entry.attachments|length > 1 %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('download_attachments', entry_id=entry.id) }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download all (ZIP)
+        </a>
+      {% endif %}
     </div>
-  {% else %}
-    <p class="muted">No files attached.</p>
-  {% endif %}
-</section>
+    {% if entry.attachments %}
+      <div class="attachments">
+        {% for attachment in entry.attachments %}
+          <div class="attachment">
+            <a href="{{ url_for('uploaded_file', filename=attachment.filename) }}" target="_blank" rel="noopener" style="text-decoration: none; color: inherit;">
+              {% if attachment.kind == 'image' %}
+                <img src="{{ url_for('uploaded_file', filename=attachment.filename) }}" alt="{{ attachment.original_name }}" loading="lazy" />
+              {% elif attachment.kind == 'model' %}
+                <model-viewer src="{{ url_for('uploaded_file', filename=attachment.filename) }}" auto-rotate camera-controls style="width: 100%; height: 180px;"></model-viewer>
+              {% else %}
+                <div style="width: 100%; height: 180px; display: grid; place-items: center; background: var(--border); color: var(--muted);">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+              {% endif %}
+            </a>
+            <div class="info">
+              <div class="name">{{ attachment.original_name }}</div>
+              <div class="type">{{ attachment.media_type or 'file' }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted" style="padding: 20px 0; text-align: center;">No files attached.</p>
+    {% endif %}
+  </article>
+</div>
+
+<script src="{{ url_for('static', filename='lightbox.js') }}"></script>
 {% endblock %}

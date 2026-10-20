@@ -1,67 +1,118 @@
 {% extends 'base.html' %}
 
-{% block title %}Team{% endblock %}
-
 {% block content %}
-<section class="form-card">
-  <h2>Admin panel: add team member</h2>
-  <form method="post" class="stack">
-    <label>
-      Name
-      <input type="text" name="name" required />
-    </label>
-    <label>
-      Password
-      <input type="password" name="password" required />
-    </label>
-    <label class="inline">
-      <input type="checkbox" onclick="togglePassword(this)" data-target="password" />
-      Show password
-    </label>
-    <label>
-      Role
-      <input type="text" name="role" placeholder="Survey lead" />
-    </label>
-    <label>
-      Contact
-      <input type="text" name="contact" placeholder="email or phone" />
-    </label>
-    <label class="inline">
-      <input type="checkbox" name="is_admin" />
-      Admin access
-    </label>
-    <button type="submit" class="button">Save</button>
-  </form>
-</section>
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <div>
+      <h1 class="card-title">Admin panel</h1>
+      <p class="card-subtitle">Manage team members and their access</p>
+    </div>
+  </div>
+</div>
 
-<section class="card">
-  <h3>Team roster</h3>
+<div class="grid two" style="margin-bottom: 24px;">
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Add team member</h2></div>
+    <form method="post" class="stack">
+      <div class="field-row two">
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" name="name" id="name" required autofocus />
+        </div>
+        <div class="field">
+          <label for="role">Role</label>
+          <input type="text" name="role" id="role" placeholder="Survey lead" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-group">
+          <input type="password" name="password" id="password" required autocomplete="new-password" />
+          <button type="button" class="btn btn-ghost btn-sm" onclick="togglePassword(this)" aria-label="Toggle password visibility">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="contact">Contact</label>
+        <input type="text" name="contact" id="contact" placeholder="email or phone" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label style="display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer;">
+          <input type="checkbox" name="is_admin" />
+          <span>Admin access</span>
+        </label>
+      </div>
+      <div class="actions"><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Quick stats</h2></div>
+    <div class="stats-grid">
+      <div><div class="stat-value">{{ users|length }}</div><div class="stat-label">Total members</div></div>
+      <div><div class="stat-value">{{ users|selectattr('is_admin')|list|length }}</div><div class="stat-label">Admins</div></div>
+      <div><div class="stat-value">{{ users|rejectattr('is_admin')|list|length }}</div><div class="stat-label">Regular</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2 class="card-title">Team roster</h2></div>
   {% if users %}
     <ul class="list">
       {% for user in users %}
-        <li>
+      <li class="list-item">
+        <div class="list-main" style="display: flex; align-items: center; gap: 12px;">
+          <div class="avatar avatar-sm" style="background: var(--accent); color: var(--bg);">
+            {% if user.photo_filename %}
+              <img src="{{ url_for('uploaded_file', filename=user.photo_filename) }}" alt="" />
+            {% else %}
+              {{ user.name[:1].upper() }}
+            {% endif %}
+          </div>
           <div>
-            <strong>{{ user.name }}</strong>
-            <span>{{ user.role }}{% if user.is_admin %} · Admin{% endif %}</span>
-            {% if user.contact %}<span class="muted">{{ user.contact }}</span>{% endif %}
+            <div class="list-title" style="display: flex; align-items: center; gap: 8px;">
+              {{ user.name }}
+              {% if user.is_admin %}
+                <span style="font-size: 10.5px; font-weight: 600; background: var(--accent); color: var(--bg); padding: 2px 8px; border-radius: 999px;">Admin</span>
+              {% endif %}
+            </div>
+            <div class="list-meta">{{ user.role }}{% if user.contact %} · {{ user.contact }}{% endif %}</div>
           </div>
-          <div class="actions">
-            <a class="link" href="{{ url_for('edit_user', user_id=user.id) }}">Edit</a>
-            <form method="post" action="{{ url_for('delete_user', user_id=user.id) }}" onsubmit="return confirm('Delete this user?');">
-              <button class="button ghost" type="submit">Delete</button>
-            </form>
-          </div>
-        </li>
+        </div>
+        <div class="list-actions">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('edit_user', user_id=user.id) }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
+          </a>
+          <form method="post" action="{{ url_for('delete_user', user_id=user.id) }}" onsubmit="return confirm('Delete this user?');" style="margin:0;">
+            <button class="btn btn-danger btn-sm" type="submit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Delete
+            </button>
+          </form>
+        </div>
+      </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="muted">No team members yet.</p>
+    <div class="empty" style="padding: 32px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <h3>No team members yet</h3>
+      <p>Add your first team member using the form on the left.</p>
+    </div>
   {% endif %}
-</section>
+</div>
+
 <script>
-  function togglePassword(checkbox) {
-    const field = document.querySelector('input[name=\"password\"]');
-    field.type = checkbox.checked ? 'text' : 'password';
+  function togglePassword(btn) {
+    const input = btn.parentElement.querySelector('input[type="password"], input[type="text"]');
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    btn.innerHTML = isPassword
+      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   }
 </script>
 {% endblock %}
