@@ -1,8 +1,13 @@
 # Archain Field Diary
 
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)](https://flask.palletsprojects.com)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A lightweight archaeological field diary built for Raspberry Pi 5 deployments. Log entries with time, GPS, photos, 3D models, and collaboration metadata, then share them with teammates.
 
 ## Features
+<<<<<<< Updated upstream
 - Add diary entries with timestamp, weather, and notes.
 - Capture GPS coordinates directly from a mobile browser.
 - Attach photos, PDFs, and 3D models (GLB/GLTF) rendered in-browser.
@@ -18,20 +23,38 @@ A lightweight archaeological field diary built for Raspberry Pi 5 deployments. L
 - Auto-fill weather from coordinates (via wttr.in) when the weather field is left blank.
 - Toggle between light and dark themes for field conditions.
 - Browse a user directory with profile details, selfies, and linked entries.
+=======
+>>>>>>> Stashed changes
 
-## Quick start
+- **Diary Entries** — Add entries with timestamp, weather, and rich notes
+- **GPS Capture** — Get coordinates directly from mobile browsers
+- **Media Attachments** — Photos, PDFs, and 3D models (GLB/GLTF) rendered in-browser
+- **Team Collaboration** — Track team members and discoverers for each find
+- **SQLite Storage** — Simple multi-user access on the same network
+- **Role-Based Auth** — Login required for all users; owner-admin manages entries and accounts
+- **Search & Map** — Search by title, notes, or tags; view finds on an interactive map
+- **Auto Weather** — Auto-fills weather from coordinates (via wttr.in) when blank
+- **Light/Dark Themes** — Toggle for field conditions
+- **User Directory** — Browse profiles with details, selfies, and linked entries
+
+## Quick Start
+
+### Local Development
+
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
 ```
 
 Visit `http://localhost:8000` from your desktop or mobile device on the same network.
 
-### First-time setup
+### First-Time Setup
+
 If no users exist, open `/setup` to create the owner account. The owner can then create more users from the admin panel.
 
+<<<<<<< Updated upstream
 ## Configuration
 - `ARCHAIN_MAX_UPLOAD_MB` – maximum size of one upload request (all files of one entry together). Default `200`.
 
@@ -83,17 +106,158 @@ Smaller models are quicker but make more mistakes, and quality in languages othe
 - Uses only Python + SQLite, so it runs well on ARM64.
 - For multi-user access, run `python app.py` and keep the Pi on your local network.
 - Store the `diary.db` file in a backed-up location for long-term preservation.
+=======
+## Raspberry Pi 5 Deployment
+>>>>>>> Stashed changes
 
-## Optional Docker setup
-```bash
-docker build -t field-diary .
-docker run -p 8000:8000 -v $(pwd)/uploads:/app/uploads -v $(pwd)/diary.db:/app/diary.db field-diary
+- Uses only Python + SQLite, so it runs well on ARM64
+- For multi-user access, run `python app.py` and keep the Pi on your local network
+- Store the `diary.db` file in a backed-up location for long-term preservation
+
+### Systemd Service (Recommended for Pi)
+
+Create `/etc/systemd/system/archain.service`:
+
+```ini
+[Unit]
+Description=Archain Field Diary
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Archain
+Environment=PATH=/home/pi/Archain/.venv/bin
+ExecStart=/home/pi/Archain/.venv/bin/python app.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
 ```
 
-## Data model
-- **Users** are the shared team members you can add to entries.
-- **People** represent finders or contributors.
-- **Entries** capture the diary content and reference uploads stored in `/uploads`.
+Enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable archain
+sudo systemctl start archain
+```
 
-## Security
-This demo app includes basic username/password authentication. For production use, add stronger auth and backup routines.
+## Docker Deployment
+
+```bash
+docker build -t field-diary .
+docker run -p 8000:8000 \
+  -v $(pwd)/uploads:/app/uploads \
+  -v $(pwd)/diary.db:/app/diary.db \
+  field-diary
+```
+
+## Project Structure
+
+```
+Archain/
+├── app.py                 # Main Flask application
+├── requirements.txt       # Python dependencies
+├── Dockerfile             # Container definition
+├── diary.db               # SQLite database (created on first run)
+├── uploads/               # Attached media files
+├── static/
+│   └── styles.css         # Stylesheet with light/dark themes
+└── templates/             # Jinja2 templates
+    ├── base.html          # Base layout
+    ├── index.html         # Entry list with search
+    ├── entry_form.html    # Create/edit entry form
+    ├── entry_detail.html  # Entry detail view
+    ├── login.html         # Login page
+    ├── setup.html         # First-admin setup
+    ├── map.html           # Map view of entries
+    ├── users.html         # Admin user management
+    ├── edit_user.html     # Admin edit user
+    ├── people.html        # Admin manage people
+    ├── user_directory.html# Team directory
+    ├── user_profile.html  # Profile view
+    └── edit_profile.html  # Profile editing
+```
+
+## Data Model
+
+| Entity | Description |
+|--------|-------------|
+| **User** | Team members with login; can be admin/owner |
+| **Person** | Finders/contributors (no login) |
+| **Entry** | Diary content with metadata, GPS, weather, tags |
+| **Tag** | Searchable tags on entries |
+| **Attachment** | Uploaded files (images, PDFs, 3D models) |
+
+Relationships:
+- Entry ↔ User (many-to-many via `entry_users`)
+- Entry ↔ Person (many-to-many via `entry_people`)
+- Entry ↔ Tag (many-to-many via `entry_tags`)
+- Entry → Attachment (one-to-many)
+- Entry → User (owner, many-to-one)
+
+## Configuration
+
+Environment variables (optional):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SECRET_KEY` | `dev-secret-change-me` | Flask session secret (change in production!) |
+| `DATABASE_URL` | `sqlite:///diary.db` | SQLAlchemy database URI |
+| `MAX_CONTENT_LENGTH` | `52428800` (50MB) | Max upload size |
+
+## API Endpoints
+
+### Authentication
+- `GET/POST /login` — Sign in
+- `POST /logout` — Sign out
+- `GET/POST /setup` — Create first admin (only if no users exist)
+
+### Entries
+- `GET /` — List entries (searchable)
+- `GET /map` — Map view of geotagged entries
+- `GET/POST /entries/new` — Create entry
+- `GET /entries/<id>` — View entry
+- `GET/POST /entries/<id>/edit` — Edit entry
+- `POST /entries/<id>/delete` — Delete entry (owner/admin)
+
+### Users (Admin)
+- `GET/POST /users` — List/create users
+- `GET/POST /users/<id>/edit` — Edit user
+- `POST /users/<id>/delete` — Delete user
+
+### Profiles (Self + Admin)
+- `GET /directory` — Team directory
+- `GET /users/<id>` — Profile + entries
+- `GET/POST /users/<id>/profile` — Edit profile
+- `POST /users/<id>/password` — Change password
+
+### People (Admin)
+- `GET/POST /people` — List/create people
+
+### Utilities
+- `GET /uploads/<filename>` — Serve uploaded files (auth required)
+- `GET /weather?lat=X&lon=Y` — Fetch weather for coordinates
+
+## Security Notes
+
+⚠️ **This is a field-tool demo.** For production use:
+
+- Change `SECRET_KEY` to a strong random value
+- Use HTTPS (reverse proxy with nginx + Let's Encrypt)
+- Enable Flask's `SESSION_COOKIE_SECURE` and `SESSION_COOKIE_HTTPONLY`
+- Add rate limiting on auth endpoints
+- Implement automated database backups
+- Consider PostgreSQL for concurrent write-heavy workloads
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
