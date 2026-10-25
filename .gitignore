@@ -1,34 +1,6 @@
-# Python
 .venv/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Database & uploads (local data)
-diary.db
-diary.db-*
 uploads/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment
-.env
-.env.local
-
-# Docker
-.docker/
-
-# Logs
-*.log
+diary.db
+demo/
