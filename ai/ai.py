@@ -87,7 +87,7 @@ def fetch_ollama_models(url):
     """Fetch available models from Ollama server."""
     try:
         req = urllib.request.Request(f"{url.rstrip('/')}/api/tags", method="GET")
-        with _OPENER.open(req, timeout=3) as resp:
+        with _OPENER.open(req, timeout=5) as resp:
             data = json.loads(resp.read(2_000_000) or b"{}")
         return [m.get("name") or m.get("model") or "" for m in data.get("models", [])]
     except Exception:
@@ -278,16 +278,23 @@ class AIClient:
         if cfg.model and recent and not force:
             return cfg.model
         self._last_model_check = now
-        installed = fetch_ollama_models(cfg.url)
+        self._apply_installed(fetch_ollama_models(cfg.url))
+        return cfg.model
+
+    def _apply_installed(self, installed):
+        """Choose the model from the installed names (keeps the current one while it is still installed)."""
+        cfg = self.cfg
+        if cfg.model_pinned or cfg.backend != "ollama":
+            return
         if cfg.model and _has_model(cfg.model, installed):
-            return cfg.model  # keep the current choice while it is still installed (no surprise model swaps)
+            return  # no surprise model swaps
         chosen = choose_model(installed, cfg.default_model)
         if chosen:
             cfg.model = chosen
-        return cfg.model
 
-    def describe(self):
-        self.refresh_model()
+    def describe(self, refresh=True):
+        if refresh:
+            self.refresh_model()
         cfg = self.cfg
         return {
             "backend": cfg.backend,
@@ -321,15 +328,17 @@ class AIClient:
 
     def status(self):
         cfg = self.cfg
-        self.refresh_model(force=True)
-        info = self.describe()
+        info = self.describe(refresh=False)  # one request to the AI server is enough, see below
         info.update(enabled=cfg.enabled, state="unreachable", message="", hint="", installed=[])
         try:
             if cfg.backend == "ollama":
-                with self._request("GET", "/api/tags", timeout=3) as response:
+                with self._request("GET", "/api/tags", timeout=8) as response:
                     data = json.loads(response.read(2_000_000) or b"{}")
                 names = [m.get("name") or m.get("model") or "" for m in data.get("models", [])]
                 info["installed"] = names[:30]
+                self._last_model_check = time.monotonic()
+                self._apply_installed(names)
+                info["model"] = cfg.model
                 if not cfg.model:
                     info["state"] = "model_missing"
                     info["message"] = "Ollama is running but has no chat model installed."
@@ -350,7 +359,7 @@ class AIClient:
             else:
                 info["message"] = err.message
                 if cfg.backend == "ollama":
-                    info["hint"] = f"Install Ollama (ollama.com), start it, then run: ollama pull {cfg.model}"
+                    info["hint"] = f"Install Ollama (ollama.com), start it, then run: ollama pull {cfg.model or '<model>'}"
                 else:
                     info["hint"] = "Start your OpenAI-compatible server (for example llama-server)."
         return info

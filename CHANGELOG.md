@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this format.
 ## [Unreleased]
 
 ### Fixed
+- AI assistant: Send / quick prompts no longer wait for the status check (slow with big models); the status check makes a single request to Ollama
+- AI assistant: clicking a quick prompt / Send never fails silently any more (shows the reason, script errors appear in the banner); chat bubbles are styled again
 - Cards inside grids (team directory, admin panel) no longer get an extra top margin, so the first card no longer looks bigger
 - AI assistant: the auto-picked model stays stable while installed; AI errors are logged to the server console
 - Entry form: team members / finders dropdowns did not open (syntax error in multi-select.js)
