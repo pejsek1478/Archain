@@ -35,6 +35,13 @@ TILES_DIR = BASE_DIR / "tiles"
 TILES_DIR.mkdir(exist_ok=True)
 
 app = Flask(__name__)
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(
+        BASE_DIR,
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon"
+    )
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{BASE_DIR / 'diary.db'}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = "dev-secret-change-me"
