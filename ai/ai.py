@@ -94,6 +94,17 @@ def fetch_ollama_models(url):
         return []
 
 
+def choose_model(installed, preferred=""):
+    """Pick a chat model from the installed ones: the preferred name if present, else the first non-embedding one."""
+    chat = [name for name in installed if name and "embed" not in name.lower()]
+    if preferred:
+        wanted = preferred.lower()
+        for name in chat:
+            if wanted in name.lower():
+                return name
+    return chat[0] if chat else ""
+
+
 class AIConfig:
     """Configuration loaded from ai_config.json with environment variable overrides.
     
@@ -112,17 +123,18 @@ class AIConfig:
         default_url = "http://127.0.0.1:11434" if self.backend == "ollama" else "http://127.0.0.1:8080"
         self.url = _get_str(config, "url", default_url, "ARCHAIN_AI_URL").rstrip("/")
         
-        # Load model from config/env or fetch from Ollama
-        env_model = _get_str(config, "model", "", "ARCHAIN_AI_MODEL")
-        if env_model:
-            self.model = env_model
+        # A model set in the config/env is always used. Otherwise (Ollama) AIClient picks one of the
+        # models that are actually installed, preferring `default_model` (optional, may be empty).
+        pinned = _get_str(config, "model", "", "ARCHAIN_AI_MODEL")
+        self.model_pinned = bool(pinned)
+        self.default_model = _get_str(config, "default_model", "")
+        if pinned:
+            self.model = pinned
         elif self.backend == "ollama":
-            default_model = _get_str(config, "default_model", "qwen3.5:4b")
-            models = fetch_ollama_models(self.url)
-            self.model = next((m for m in models if default_model in m), default_model)
+            self.model = ""  # resolved by AIClient.refresh_model()
         else:
-            self.model = _get_str(config, "default_model", "qwen3.5:4b")
-            
+            self.model = self.default_model or "local"  # OpenAI-compatible servers usually ignore it
+
         # None = let the runtime choose (Ollama picks the physical/performance cores).
         self.threads = _get_int(config, "threads", None, 1, 512, "ARCHAIN_AI_THREADS")
         self.ctx = _get_int(config, "ctx", 4096, 1024, 131072, "ARCHAIN_AI_CTX")
@@ -253,9 +265,29 @@ class AIClient:
         self.cfg = config
         self._send_think = True  # switched off for servers/models that reject the flag
         self._last_warm = None
+        self._last_model_check = None
 
     # ------------------------------------------------------------------ plumbing
+    def refresh_model(self, force=False):
+        """Without a pinned model, use whatever Ollama has installed (re-checked every few seconds)."""
+        cfg = self.cfg
+        if cfg.model_pinned or cfg.backend != "ollama":
+            return cfg.model
+        now = time.monotonic()
+        recent = self._last_model_check is not None and now - self._last_model_check < 10
+        if cfg.model and recent and not force:
+            return cfg.model
+        self._last_model_check = now
+        installed = fetch_ollama_models(cfg.url)
+        if cfg.model and _has_model(cfg.model, installed):
+            return cfg.model  # keep the current choice while it is still installed (no surprise model swaps)
+        chosen = choose_model(installed, cfg.default_model)
+        if chosen:
+            cfg.model = chosen
+        return cfg.model
+
     def describe(self):
+        self.refresh_model()
         cfg = self.cfg
         return {
             "backend": cfg.backend,
@@ -289,6 +321,7 @@ class AIClient:
 
     def status(self):
         cfg = self.cfg
+        self.refresh_model(force=True)
         info = self.describe()
         info.update(enabled=cfg.enabled, state="unreachable", message="", hint="", installed=[])
         try:
@@ -297,7 +330,11 @@ class AIClient:
                     data = json.loads(response.read(2_000_000) or b"{}")
                 names = [m.get("name") or m.get("model") or "" for m in data.get("models", [])]
                 info["installed"] = names[:30]
-                if _has_model(cfg.model, names):
+                if not cfg.model:
+                    info["state"] = "model_missing"
+                    info["message"] = "Ollama is running but has no chat model installed."
+                    info["hint"] = "ollama pull <model>  (for example: ollama pull llama3.2:3b)"
+                elif _has_model(cfg.model, names):
                     info["state"] = "ok"
                 else:
                     info["state"] = "model_missing"
@@ -338,18 +375,18 @@ class AIClient:
                 return self._request("POST", "/api/chat", payload)
             raise
 
-    def _friendly(self, err):
+    def _friendly(self, err, model):
         text = err.message.lower()
         if err.status == 404 and "not found" in text and self.cfg.backend == "ollama":
             return AIError(
-                f"The model {self.cfg.model} is not installed. Run: ollama pull {self.cfg.model}",
+                f"The model {model} is not installed. Run: ollama pull {model}",
                 status=404,
             )
         return err
 
-    def _stream_ollama(self, messages, max_tokens, temperature):
+    def _stream_ollama(self, messages, max_tokens, temperature, model):
         payload = {
-            "model": self.cfg.model,
+            "model": model,
             "messages": messages,
             "stream": True,
             "keep_alive": self.cfg.keep_alive,
@@ -360,7 +397,7 @@ class AIClient:
         try:
             response = self._open_ollama_chat(payload)
         except AIError as err:
-            raise self._friendly(err) from None
+            raise self._friendly(err, model) from None
         stats = {}
         announced = False
         try:
@@ -391,9 +428,9 @@ class AIClient:
             response.close()
         yield ("done", stats)
 
-    def _stream_openai(self, messages, max_tokens, temperature):
+    def _stream_openai(self, messages, max_tokens, temperature, model):
         payload = {
-            "model": self.cfg.model,
+            "model": model,
             "messages": messages,
             "stream": True,
             "max_tokens": max_tokens,
@@ -402,7 +439,7 @@ class AIClient:
         try:
             response = self._request("POST", "/v1/chat/completions", payload)
         except AIError as err:
-            raise self._friendly(err) from None
+            raise self._friendly(err, model) from None
         chunks = 0
         try:
             for raw in response:
@@ -431,9 +468,19 @@ class AIClient:
             response.close()
         yield ("done", {"tokens": chunks, "eval_seconds": 0})
 
-    def stream_chat(self, messages, max_tokens=None, temperature=0.3):
-        """Yield events: queued, start, thinking, delta, done. Raises AIError on failure."""
+    def stream_chat(self, messages, max_tokens=None, temperature=0.3, model=None):
+        """Yield events: queued, start, thinking, delta, done. Raises AIError on failure.
+
+        `model` (optional) overrides the default for this one request, e.g. the model picked in the UI.
+        """
         max_tokens = max_tokens or self.cfg.max_tokens
+        model = model.strip()[:200] if isinstance(model, str) and model.strip() else self.refresh_model()
+        if not model:
+            raise AIError(
+                "No AI model is available. Install one on the AI server (for example: ollama pull llama3.2:3b) "
+                "or set ARCHAIN_AI_MODEL.",
+                status=503,
+            )
         if not _GEN_LOCK.acquire(blocking=False):
             yield {"type": "queued"}
             if not _GEN_LOCK.acquire(timeout=self.cfg.queue_timeout):
@@ -442,7 +489,7 @@ class AIClient:
         try:
             yield {"type": "start"}
             opener = self._stream_ollama if self.cfg.backend == "ollama" else self._stream_openai
-            inner = opener(messages, max_tokens, temperature)
+            inner = opener(messages, max_tokens, temperature, model)
             started = time.monotonic()
             stripper = _ThinkStripper()
             produced = False
@@ -504,6 +551,8 @@ class AIClient:
         if self.cfg.backend != "ollama" or (self._last_warm is not None and now - self._last_warm < 20):
             return
         self._last_warm = now
+        if not self.refresh_model():
+            return
         if not _GEN_LOCK.acquire(blocking=False):
             return  # busy means the model is already loaded
         try:

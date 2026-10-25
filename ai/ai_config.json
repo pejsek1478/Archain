@@ -1,9 +1,9 @@
 {
-  "enabled": true,
+  "enabled": false,
   "backend": "ollama",
   "url": "http://127.0.0.1:11434",
   "model": "",
-  "default_model": "qwen3.5:4b",
+  "default_model": "",
   "threads": null,
   "ctx": 4096,
   "max_tokens": 400,

@@ -9,7 +9,6 @@
   <p class="muted" style="margin-top: 8px; max-width: 600px;">Ask questions about your entries. Answers are generated locally on the CPU — nothing leaves your network.</p>
 </div>
 
-<div id="ai-banner" class="flash flash-warning" hidden></div>
 
 <div class="model-selector" id="model-selector">
   <label for="model-select">Model</label>
@@ -63,58 +62,6 @@
     <p class="helper" id="ai-footnote" style="margin-top: 12px; text-align: center;">Model <span id="footer-model">{{ ai_info.model }}</span> via {{ ai_info.backend }} · {{ 'GPU' if ai_info.gpu else 'CPU only' }} · threads: {{ ai_info.threads }}</p>
   </section>
 
-  <aside class="card stats-card">
-    <div class="card-header">
-      <div>
-        <h2 class="card-title">Diary at a glance</h2>
-        <p class="card-subtitle">Statistics from entries you can access</p>
-      </div>
-    </div>
-
-    {% if stats.total %}
-      <div class="stats-grid">
-        <div><div class="stat-value">{{ stats.total }}</div><div class="stat-label">entries</div></div>
-        <div><div class="stat-value">{{ stats.with_gps }}</div><div class="stat-label">with GPS</div></div>
-        <div><div class="stat-value">{{ stats.files }}</div><div class="stat-label">files</div></div>
-      </div>
-      {% if stats.first %}<p class="muted" style="margin: 16px 0 0;">{{ stats.first }} → {{ stats.last }}</p>{% endif %}
-
-      {% if stats.weeks %}
-        <h3 style="font-size: 14px; font-weight: 600; margin: 20px 0 12px; color: var(--fg);">Entries per week</h3>
-        <div class="bars" role="img" aria-label="Entries per week" style="display: flex; gap: 6px; height: 110px; align-items: flex-end; padding: 8px 4px;">
-          {% for week in stats.weeks %}
-            <div class="bar-col" title="{{ week.label }}: {{ week.count }}" style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; min-width: 0;">
-              <span class="bar-count" style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">{{ week.count }}</span>
-              <span class="bar" style="width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; flex: 1; min-height: 4px; transition: height 0.3s ease; height: {{ [week.pct, 4]|max }}%;"></span>
-              <span class="bar-label" style="font-size: 10.5px; color: var(--muted); margin-top: 6px; white-space: nowrap;">{{ week.label[-3:] }}</span>
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      {% if stats.tags %}
-        <h3 style="font-size: 14px; font-weight: 600; margin: 20px 0 12px; color: var(--fg);">Top tags</h3>
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-          {% for name, count in stats.tags %}
-            <a class="tag" href="{{ url_for('index', q=name) }}">{{ name }}<span class="tag-count">{{ count }}</span></a>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      {% if stats.people %}
-        <h3 style="font-size: 14px; font-weight: 600; margin: 20px 0 12px; color: var(--fg);">Finders</h3>
-        <p class="muted" style="margin-top: 8px; line-height: 1.8;">{% for name, count in stats.people %}{{ name }} ({{ count }}){% if not loop.last %}, {% endif %}{% endfor %}</p>
-      {% endif %}
-
-      <button class="btn btn-ghost btn-sm" data-prompt="Analyse the overview statistics: trends, busy weeks, notable tags and anything unusual." style="margin-top: 20px; width: 100%;">Explain with AI</button>
-    {% else %}
-      <div class="empty" style="padding: 40px 20px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <h3>No entries yet</h3>
-        <p>Start logging field notes to see statistics here.</p>
-      </div>
-    {% endif %}
-  </aside>
 </div>
 
 <script src="{{ url_for('static', filename='assistant.js') }}"></script>

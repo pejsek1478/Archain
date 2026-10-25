@@ -69,7 +69,10 @@
 
     <div class="field">
       <label for="tags">Tags (comma separated)</label>
-      <input type="text" name="tags" id="tags" placeholder="ceramic, survey, trench-b" value="{% if entry and entry.tags %}{{ entry.tags | map(attribute='name') | join(', ') }}{% endif %}" />
+      <div class="tag-ac" data-url="{{ url_for('tag_list') }}">
+        <input type="text" name="tags" id="tags" placeholder="ceramic, survey, trench-b" value="{% if entry and entry.tags %}{{ entry.tags | map(attribute='name') | join(', ') }}{% endif %}" />
+      </div>
+      <small class="helper">Start typing to pick from existing tags (↑ ↓ and Enter or Tab)</small>
     </div>
 
     {% if ai_enabled %}
@@ -146,6 +149,8 @@
                 <input type="checkbox" value="{{ user.id }}" {% if entry and user in entry.users %}checked{% endif %} />
                 <span class="multi-select-option-label">{{ user.name }} ({{ user.role }})</span>
               </li>
+              {% else %}
+              <li class="multi-select-empty">No team members yet. Only non-admin accounts are listed; add them under Users.</li>
               {% endfor %}
             </ul>
           </div>
@@ -172,6 +177,8 @@
                 <input type="checkbox" value="{{ person.id }}" {% if entry and person in entry.people %}checked{% endif %} />
                 <span class="multi-select-option-label">{{ person.name }}{% if person.affiliation %}<span class="multi-select-option-affiliation">{{ person.affiliation }}</span>{% endif %}</span>
               </li>
+              {% else %}
+              <li class="multi-select-empty">No finders yet. An admin can add them under People.</li>
               {% endfor %}
             </ul>
           </div>
@@ -208,6 +215,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{{ url_for('static', filename='attachments.js') }}"></script>
 <script src="{{ url_for('static', filename='multi-select.js') }}"></script>
+<script src="{{ url_for('static', filename='tags-autocomplete.js') }}"></script>
 {% if ai_enabled %}<script src="{{ url_for('static', filename='ai-suggest.js') }}"></script>{% endif %}
 
 <script>

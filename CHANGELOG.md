@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this format.
 
 ## [Unreleased]
 
+### Fixed
+- Cards inside grids (team directory, admin panel) no longer get an extra top margin, so the first card no longer looks bigger
+- AI assistant: the auto-picked model stays stable while installed; AI errors are logged to the server console
+- Entry form: team members / finders dropdowns did not open (syntax error in multi-select.js)
+- AI assistant: no hardcoded model any more; uses a model that is actually installed in Ollama, and the model picked in the UI is now used
+
 ### Added
+- Tag autocomplete on the entry form (suggests existing tags while typing)
 - Comprehensive GitHub documentation (README, CONTRIBUTING, SECURITY, LICENSE)
 
 ## [1.0.0] - 2025-XX-XX

@@ -212,6 +212,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .card:hover { box-shadow: var(--shadow-hover); }
 
 .card + .card { margin-top: 20px; }
+.grid > .card + .card { margin-top: 0; } /* grids already have a gap; the extra margin shifted every card after the first */
 
 .card-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .card-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
@@ -517,3 +518,11 @@ select:not([multiple]) { min-height: 44px; }
   .model-selector { flex-direction: column; align-items: stretch; }
   .model-selector select { width: 100%; }
 }
+
+/* Tag autocomplete (entry form) */
+.tag-ac { position: relative; }
+.tag-ac-list { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; list-style: none; margin: 0; padding: 4px; max-height: 240px; overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-hover); }
+.tag-ac-list[hidden] { display: none; }
+.tag-ac-item { padding: 8px 12px; border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; color: var(--fg); }
+.tag-ac-item strong { font-weight: 700; }
+.tag-ac-item:hover, .tag-ac-item.active { background: var(--accent-soft); outline: 1px solid var(--border); }
