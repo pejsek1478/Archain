@@ -281,3 +281,16 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
+
+## Documentation
+
+The documentation is split into focused guides:
+
+- **[User guide](docs/USER_GUIDE.md)** — setup, creating entries, uploads, media viewing, search, maps, profiles, AI, and troubleshooting.
+- **[Interactive features reference](docs/INTERACTIVE_FEATURES.md)** — keyboard shortcuts, image viewer controls, 3D model interactions, GPS, autocomplete, file picking, drag-and-drop, clipboard paste, and upload progress.
+- **[Architecture and development](docs/ARCHITECTURE.md)** — stack, request lifecycle, data model, important files, routes, development workflow, and testing.
+- **[Deployment and operations](docs/DEPLOYMENT.md)** — local installation, Docker, systemd, configuration, offline maps, backups, upgrades, and security checklist.
+- [Contributing guidelines](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Changelog](CHANGELOG.md)
+
