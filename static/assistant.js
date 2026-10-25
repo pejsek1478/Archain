@@ -32,7 +32,24 @@
   let controller = null;
   let busy = false;
   let statusOk = true;
+  let lastInfo = null;
   let currentModel = '';
+
+  // Never fail silently: any script error is shown in the banner at the top of the page.
+  function showProblem(text) {
+    banner.replaceChildren();
+    const message = document.createElement('p');
+    message.textContent = text;
+    banner.append(message);
+    banner.hidden = false;
+  }
+  window.addEventListener('error', (event) => {
+    if (event.message) showProblem(`Script error: ${event.message}. Press Ctrl+F5 to reload the page.`);
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason);
+    showProblem(`Script error: ${reason}. Press Ctrl+F5 to reload the page.`);
+  });
 
   // ---- persistence (per tab, per user) -----------------------------------------
   function persist() {
@@ -201,7 +218,7 @@
 
   function setBusy(value) {
     busy = value;
-    sendButton.disabled = value || !statusOk;
+    sendButton.disabled = value;
     stopButton.hidden = !value;
     input.disabled = false;
   }
@@ -238,11 +255,11 @@
     const reply = { role: 'assistant', content: '', pending: true, status: 'Sending…' };
     const history = historyForServer();
     messages.push(user, reply);
-    render();
     controller = new AbortController();
     setBusy(true);
 
     try {
+      render();
       const response = await fetch(root.dataset.chatUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -287,8 +304,10 @@
 
   function submit(text) {
     const question = text.trim();
-    if (!question || busy || !statusOk) return;
+    if (!question || busy) return;
     input.value = '';
+    // Never gate on the status check: it can be slow while Ollama loads a big model. The chat request
+    // itself reports the real problem (server unreachable, model missing...) in the conversation.
     ask(question);
   }
 
@@ -408,23 +427,36 @@
     try {
       const response = await fetch(root.dataset.statusUrl);
       const info = await response.json();
+      lastInfo = info;
+      const wasOk = statusOk;
       statusOk = info.state === 'ok';
       if (statusOk) {
         banner.hidden = true;
         fetch(root.dataset.warmupUrl, { method: 'POST' }).catch(() => {});
+        if (!wasOk) loadModels();
       } else {
         showBanner(info);
       }
     } catch (error) {
       statusOk = false;
-      showBanner({ message: 'Could not check the AI server.' });
+      lastInfo = { message: 'Could not check the AI server.' };
+      showBanner(lastInfo);
     }
     setBusy(busy);
   }
 
-  restore();
-  renderFocus();
-  render();
+  try {
+    restore();
+    renderFocus();
+    render();
+  } catch (error) {
+    // A stale or broken saved conversation must never block the page: start fresh.
+    messages = [];
+    try { sessionStorage.removeItem(storageKey); } catch (ignore) { /* storage unavailable */ }
+    render();
+  }
   loadModels();
   checkStatus();
+  // Recover on its own once Ollama / the model becomes available.
+  setInterval(() => { if (!statusOk && !busy) checkStatus(); }, 10000);
 })();

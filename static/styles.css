@@ -200,6 +200,9 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 /* ===== MAIN CONTENT ===== */
 .main { flex: 1; max-width: 1100px; width: 100%; margin: 0 auto; padding: 28px 20px 40px; box-sizing: border-box; }
 
+/* Elements with their own display (buttons, banners) must still disappear when hidden */
+[hidden] { display: none !important; }
+
 /* ===== CARDS ===== */
 .card {
   background: var(--card);
@@ -212,6 +215,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .card:hover { box-shadow: var(--shadow-hover); }
 
 .card + .card { margin-top: 20px; }
+.grid > .card + .card { margin-top: 0; } /* grids already have a gap; the extra margin shifted every card after the first */
 
 .card-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .card-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
@@ -517,3 +521,28 @@ select:not([multiple]) { min-height: 44px; }
   .model-selector { flex-direction: column; align-items: stretch; }
   .model-selector select { width: 100%; }
 }
+
+/* Tag autocomplete (entry form) */
+.tag-ac { position: relative; }
+.tag-ac-list { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; list-style: none; margin: 0; padding: 4px; max-height: 240px; overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-hover); }
+.tag-ac-list[hidden] { display: none; }
+.tag-ac-item { padding: 8px 12px; border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; color: var(--fg); }
+.tag-ac-item strong { font-weight: 700; }
+.tag-ac-item:hover, .tag-ac-item.active { background: var(--accent-soft); outline: 1px solid var(--border); }
+
+/* Chat messages as drawn by assistant.js (.chat-message > .bubble) */
+.chat-message { display: flex; max-width: 88%; animation: fadeIn 0.2s ease; }
+.chat-message.role-user { align-self: flex-end; }
+.chat-message.role-assistant { align-self: flex-start; }
+.chat-message .bubble { min-width: 0; padding: 12px 16px; border-radius: var(--radius); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.chat-message.role-user .bubble { background: var(--accent); color: var(--bg); border-bottom-right-radius: 4px; white-space: pre-wrap; }
+.chat-message.role-assistant .bubble { background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.bubble p { margin: 0 0 8px; }
+.bubble p:last-child { margin-bottom: 0; }
+.bubble ul, .bubble ol { margin: 4px 0 8px 20px; }
+.bubble h4 { margin: 8px 0 4px; font-size: 14px; }
+.bubble code { padding: 1px 5px; border-radius: 4px; background: var(--accent-soft); font-size: 12.5px; }
+.bubble .sources { font-size: 12px; color: var(--muted); margin-top: 10px; }
+.bubble a.cite { font-weight: 500; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.bubble .typing { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }

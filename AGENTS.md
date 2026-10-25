@@ -105,8 +105,8 @@ All AI settings are configured in `ai/ai_config.json`. Environment variables (`A
 | `enabled` | `ARCHAIN_AI` | `true` | `false` disables assistant entirely |
 | `backend` | `ARCHAIN_AI_BACKEND` | `ollama` | `ollama` or `openai` |
 | `url` | `ARCHAIN_AI_URL` | `http://127.0.0.1:11434` | Model server |
-| `model` | `ARCHAIN_AI_MODEL` | (auto from Ollama) | Model name; if empty, picks first matching `default_model` from Ollama |
-| `default_model` | — | `qwen3.5:4b` | Fallback model name for Ollama auto-detection |
+| `model` | `ARCHAIN_AI_MODEL` | (auto from Ollama) | Model name; if empty, uses an installed Ollama model (prefers `default_model` if set) |
+| `default_model` | — | (empty) | Optional preferred model name (substring match against installed models) |
 | `threads` | `ARCHAIN_AI_THREADS` | `null` (auto) | CPU threads (1–512) |
 | `ctx` | `ARCHAIN_AI_CTX` | `4096` | Context tokens (1024–131072) |
 | `max_tokens` | `ARCHAIN_AI_MAX_TOKENS` | `400` | Answer length (32–4096) |

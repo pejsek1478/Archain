@@ -70,8 +70,8 @@ Smaller models are quicker but make more mistakes, and quality in languages othe
 | `enabled` | `ARCHAIN_AI` | `true` | `false` hides the assistant completely. |
 | `backend` | `ARCHAIN_AI_BACKEND` | `ollama` | `ollama` or `openai` (OpenAI-compatible server). |
 | `url` | `ARCHAIN_AI_URL` | `http://127.0.0.1:11434` | Address of the model server. In Docker use `http://host.docker.internal:11434`. |
-| `model` | `ARCHAIN_AI_MODEL` | (auto) | Model name. If empty, auto-detects from Ollama using `default_model`. |
-| `default_model` | — | `qwen3.5:4b` | Fallback model for Ollama auto-detection. |
+| `model` | `ARCHAIN_AI_MODEL` | (auto) | Model name. If empty, uses a model that is installed in Ollama (prefers `default_model` if set, else the first non-embedding model). |
+| `default_model` | — | (empty) | Optional preferred model name (substring match against installed models). |
 | `threads` | `ARCHAIN_AI_THREADS` | auto | CPU threads. Auto lets Ollama choose; set a number to override. |
 | `use_gpu` | `ARCHAIN_AI_USE_GPU` | `false` | CPU only by default. `true` lets the server use a GPU if available. |
 | `ctx` | `ARCHAIN_AI_CTX` | `4096` | Context window in tokens. |

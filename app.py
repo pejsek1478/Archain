@@ -3,6 +3,7 @@ import os
 import tempfile
 import uuid
 import zipfile
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -454,11 +455,11 @@ def assistant_models():
         return jsonify(enabled=False), 404
     if AI_CONFIG.backend != "ollama":
         return jsonify(models=[AI_CONFIG.model])
-    try:
-        models = ai.fetch_ollama_models(AI_CONFIG.url)
-        return jsonify(models=models, current=AI_CONFIG.model)
-    except Exception as e:
-        return jsonify(models=[AI_CONFIG.model], current=AI_CONFIG.model, error=str(e))
+    models = [name for name in ai.fetch_ollama_models(AI_CONFIG.url) if name]
+    current = AI_CLIENT.refresh_model(force=True)
+    if not models:
+        return jsonify(models=[], current=current, error="No models found. Is Ollama running and a model installed?")
+    return jsonify(models=models, current=current)
 
 
 @app.route("/assistant/warmup", methods=["POST"])
@@ -489,9 +490,10 @@ def assistant_chat():
     def generate():
         yield _ndjson({"type": "meta", "sources": sources})
         try:
-            for event in AI_CLIENT.stream_chat(messages):
+            for event in AI_CLIENT.stream_chat(messages, model=payload.get("model")):
                 yield _ndjson(event)
         except ai.AIError as err:
+            app.logger.warning("AI chat failed (model %s, HTTP %s): %s", AI_CONFIG.model, err.status, err.message)
             yield _ndjson({"type": "error", "message": err.message})
         except Exception:  # noqa: BLE001 - never leave the browser hanging on a half-open stream
             app.logger.exception("Unexpected error in the AI assistant")
@@ -517,6 +519,7 @@ def assistant_suggest():
     try:
         reply = AI_CLIENT.complete(messages, max_tokens=80, temperature=0.2)
     except ai.AIError as err:
+        app.logger.warning("AI suggest failed (model %s, HTTP %s): %s", AI_CONFIG.model, err.status, err.message)
         return jsonify(error=err.message), (429 if err.status == 429 else 503)
     return jsonify(ai.parse_suggestion(reply))
 
@@ -742,6 +745,20 @@ def manage_people():
 
     people = db.session.execute(select(Person).order_by(Person.name)).scalars().all()
     return render_template("people.html", people=people)
+
+
+@app.route("/tags.json")
+def tag_list():
+    """Existing tag names (most used first) for the entry form autocomplete.
+
+    Only tags from entries the signed-in user may see, so names never leak across entries.
+    """
+    if not g.user:
+        return jsonify(tags=[]), 401
+    query = _accessible_entries_query().options(selectinload(Entry.tags))
+    entries = db.session.execute(query).scalars().all()
+    counts = Counter(tag.name for entry in entries for tag in entry.tags)
+    return jsonify(tags=sorted(counts, key=lambda name: (-counts[name], name)))
 
 
 @app.route("/uploads/<path:filename>")
@@ -988,7 +1005,8 @@ def _fetch_weather(latitude, longitude):
             check=True,
             timeout=5,
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return ""
