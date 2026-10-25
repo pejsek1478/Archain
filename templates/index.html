@@ -1,67 +1,59 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="card" style="margin-bottom: 24px;">
-  <div class="card-header">
-    <div>
-      <h1 class="card-title">Field Diary Entries</h1>
-      <p class="card-subtitle">Track contexts, GPS points, photos, 3D models, and finders</p>
-    </div>
-    <a class="btn btn-primary" href="{{ url_for('new_entry') }}">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      New Entry
-    </a>
+<section class="dashboard-hero">
+  <div>
+    <p class="eyebrow">FIELD ARCHIVE</p>
+    <h1>Explore your archive</h1>
+    <p class="hero-subtitle">Your field notes, discoveries, photographs and models in one place.</p>
   </div>
-</div>
+  <a class="btn btn-primary" href="{{ url_for('new_entry') }}">＋ New entry</a>
+</section>
 
-<form class="search-form" method="get" action="{{ url_for('index') }}">
-  <input class="search-input" type="search" name="q" placeholder="Search title, notes, or tags…" value="{{ query }}" aria-label="Search entries" />
+<form class="search-form dashboard-search" method="get" action="{{ url_for('index') }}">
+  <input class="search-input" type="search" name="q" placeholder="Search entries, notes, or tags…" value="{{ query }}" aria-label="Search entries" />
   <button class="btn btn-ghost" type="submit">Search</button>
   {% if query %}<a class="btn btn-ghost" href="{{ url_for('index') }}">Clear</a>{% endif %}
 </form>
 
-{% if query %}
-  <p class="muted" style="margin-bottom: 16px;">{{ entries|length }} {{ 'entry' if entries|length == 1 else 'entries' }} for “{{ query }}”.</p>
-{% endif %}
+<div class="dashboard-section-heading">
+  <div><h2>{{ 'Search results' if query else 'Recent entries' }}</h2><p class="muted">{{ entries|length }} {{ 'entry' if entries|length == 1 else 'entries' }}{% if query %} matching “{{ query }}”{% endif %}</p></div>
+  {% if entries %}<span class="archive-count">{{ entries|length }} total</span>{% endif %}
+</div>
 
 {% if entries %}
-  <ul class="list">
+  <div class="entry-grid">
     {% for entry in entries %}
-    <li class="list-item">
-      <a href="{{ url_for('entry_detail', entry_id=entry.id) }}" class="list-main">
-        <div class="list-title">{{ entry.title }}</div>
-        <div class="list-meta">
-          <span>{{ (entry.event_time or entry.created_at).strftime('%Y-%m-%d %H:%M') }}</span>
-          {% if entry.location_label %}<span>{{ entry.location_label }}</span>{% endif %}
-          {% if entry.latitude and entry.longitude %}<span>📍 GPS</span>{% endif %}
-          {% if entry.attachments %}<span>📎 {{ entry.attachments|length }} file{{ 's' if entry.attachments|length != 1 else '' }}</span>{% endif %}
-        </div>
-        {% if entry.tags %}
-          <div class="list-tags">
-            {% for tag in entry.tags %}<a class="tag" href="{{ url_for('index', q=tag.name) }}">{{ tag.name }}</a>{% endfor %}
+      {% set cover = namespace(image=None) %}
+      {% for attachment in entry.attachments %}{% if attachment.kind == 'image' and not cover.image %}{% set cover.image = attachment %}{% endif %}{% endfor %}
+      <article class="entry-card">
+        <a class="entry-cover" href="{{ url_for('entry_detail', entry_id=entry.id) }}" aria-label="Open {{ entry.title }}">
+          {% if cover.image %}<img src="{{ url_for('uploaded_file', filename=cover.image.filename) }}" alt="{{ cover.image.original_name }}" loading="lazy" />
+          {% else %}<div class="entry-cover-placeholder"><span class="cover-mark">A</span><span>{{ '3D model attached' if entry.attachments|selectattr('kind', 'equalto', 'model')|list else 'Field entry' }}</span></div>{% endif %}
+          {% if entry.attachments %}<span class="cover-file-count">{{ entry.attachments|length }} file{{ 's' if entry.attachments|length != 1 else '' }}</span>{% endif %}
+        </a>
+        <div class="entry-card-body">
+          <div class="entry-card-date">{{ (entry.event_time or entry.created_at).strftime('%d %b %Y · %H:%M') }}</div>
+          <h3><a href="{{ url_for('entry_detail', entry_id=entry.id) }}">{{ entry.title }}</a></h3>
+          {% if entry.notes %}<p class="entry-card-notes">{{ entry.notes|striptags|truncate(150) }}</p>{% else %}<p class="entry-card-notes muted">No notes added.</p>{% endif %}
+          <div class="entry-card-meta">
+            {% if entry.location_label %}<span>⌖ {{ entry.location_label }}</span>{% elif entry.latitude is not none and entry.longitude is not none %}<span>⌖ GPS location</span>{% endif %}
+            {% set image_count = entry.attachments|selectattr('kind', 'equalto', 'image')|list|length %}
+            {% set model_count = entry.attachments|selectattr('kind', 'equalto', 'model')|list|length %}
+            {% if image_count %}<span>{{ image_count }} photo{{ 's' if image_count != 1 else '' }}</span>{% endif %}
+            {% if model_count %}<span>{{ model_count }} model{{ 's' if model_count != 1 else '' }}</span>{% endif %}
           </div>
-        {% endif %}
-      </a>
-    </li>
+          {% if entry.tags %}<div class="list-tags">{% for tag in entry.tags %}<a class="tag" href="{{ url_for('index', q=tag.name) }}">{{ tag.name }}</a>{% endfor %}</div>{% endif %}
+          <a class="entry-open-link" href="{{ url_for('entry_detail', entry_id=entry.id) }}">View entry <span aria-hidden="true">→</span></a>
+        </div>
+      </article>
     {% endfor %}
-  </ul>
+  </div>
 {% else %}
-  <div class="empty">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="16" y1="13" x2="8" y2="13"/>
-      <line x1="16" y1="17" x2="8" y2="17"/>
-      <polyline points="10 9 9 9 8 9"/>
-    </svg>
-    {% if query %}
-      <h3>Nothing found</h3>
-      <p>No entry matches “{{ query }}”. <a href="{{ url_for('index') }}">Clear search</a>.</p>
-    {% else %}
-      <h3>No entries yet</h3>
-      <p>Start by capturing your first field note.</p>
-      <a class="btn btn-primary" href="{{ url_for('new_entry') }}" style="margin-top: 16px;">Create entry</a>
-    {% endif %}
+  <div class="empty dashboard-empty">
+    <h3>{{ 'Nothing found' if query else 'Your archive is empty' }}</h3>
+    <p>{{ 'Try another search, or clear your filters.' if query else 'Create your first field entry to start collecting photos, notes and 3D models.' }}</p>
+    {% if query %}<a class="btn btn-ghost" href="{{ url_for('index') }}">Clear search</a>{% else %}<a class="btn btn-primary" href="{{ url_for('new_entry') }}">Create first entry</a>{% endif %}
   </div>
 {% endif %}
 {% endblock %}
