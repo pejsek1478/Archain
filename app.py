@@ -988,7 +988,8 @@ def _fetch_weather(latitude, longitude):
             check=True,
             timeout=5,
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return ""
