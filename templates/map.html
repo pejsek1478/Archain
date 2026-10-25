@@ -10,8 +10,18 @@
   </div>
 </div>
 
-<div class="card" style="padding: 0; overflow: hidden;">
-  <div id="entry-map" class="map-frame" style="height: 560px; border-radius: 0;"></div>
+<div class="card" style="padding: 0; overflow: hidden; position: relative;">
+  <div id="entry-map" class="map-frame" style="height: 560px;"></div>
+  {% if not entries %}
+  <div id="map-empty" class="visible" style="z-index: 10;">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 16px; opacity: 0.5;">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    </svg>
+    <h2 style="margin: 0 0 8px; font-size: 1.25rem;">No entries with coordinates</h2>
+    <p style="margin: 0; max-width: 320px;">Add GPS coordinates to entries to see them on the map. Use the location button on the entry form to capture your current position.</p>
+  </div>
+  {% endif %}
 </div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -23,21 +33,51 @@
     {% endfor %}
   ];
 
-  const map = L.map('entry-map');
-  if (entries.length) { map.setView([entries[0].lat, entries[0].lon], 6); }
-  else { map.setView([20, 0], 2); }
+  // Initialize map after DOM is ready and container has dimensions
+  function initMap() {
+    const map = L.map('entry-map');
+    const emptyEl = document.getElementById('map-empty');
+    
+    if (entries.length) {
+      map.setView([entries[0].lat, entries[0].lon], 6);
+      if (emptyEl) emptyEl.classList.remove('visible');
+    } else {
+      map.setView([0, 0], 2);
+      if (emptyEl) emptyEl.classList.add('visible');
+    }
 
-  function escapeHtml(v) { return String(v).replace(/[&<>"']/g, c => ({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c])); }
+    function escapeHtml(v) { return String(v).replace(/[&<>"']/g, c => ({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c])); }
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+    // Use configured tile server (OSM by default, or local/offline via ARCHAIN_TILE_URL)
+    const tileUrl = "{{ tile_url_template }}";
+    const tileAttrib = "{{ tile_attribution }}";
+    const isLocalTile = tileUrl.startsWith("/tiles/");
+    
+    const tileLayer = L.tileLayer(tileUrl, { 
+      maxZoom: 19, 
+      attribution: tileAttrib,
+      subdomains: isLocalTile ? [] : "abc",
+      noWrap: isLocalTile
+    }).addTo(map);
 
-  entries.forEach(e => {
-    const marker = L.marker([e.lat, e.lon]).addTo(map);
-    marker.bindPopup(`<strong>${escapeHtml(e.title)}</strong><br />${escapeHtml(e.time)}<br /><a href="/entries/${e.id}">Open entry</a>`);
-  });
+    entries.forEach(e => {
+      const marker = L.marker([e.lat, e.lon]).addTo(map);
+      marker.bindPopup(`<strong>${escapeHtml(e.title)}</strong><br />${escapeHtml(e.time)}<br /><a href="/entries/${e.id}">Open entry</a>`);
+    });
 
-  if (entries.length > 1) {
-    map.fitBounds(entries.map(e => [e.lat, e.lon]), { padding: [40, 40], maxZoom: 15 });
+    if (entries.length > 1) {
+      map.fitBounds(entries.map(e => [e.lat, e.lon]), { padding: [40, 40], maxZoom: 15 });
+    }
+    
+    // Ensure map renders correctly when tab becomes visible
+    setTimeout(() => map.invalidateSize(), 100);
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMap);
+  } else {
+    initMap();
   }
 </script>
 {% endblock %}

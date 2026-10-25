@@ -7,28 +7,15 @@
 A lightweight archaeological field diary built for Raspberry Pi 5 deployments. Log entries with time, GPS, photos, 3D models, and collaboration metadata, then share them with teammates.
 
 ## Features
-<<<<<<< Updated upstream
-- Add diary entries with timestamp, weather, and notes.
-- Capture GPS coordinates directly from a mobile browser.
-- Attach photos, PDFs, and 3D models (GLB/GLTF) rendered in-browser.
-- Multi-file attach: drag & drop, repeated picks add up, paste screenshots, camera button on phones, previews, per-file remove and an upload progress bar.
-- Edit an entry to remove old attachments or add more; download all attachments of an entry as one ZIP.
-- Click an image on an entry to open a full-screen viewer (arrow keys / swipe).
-- Unsaved new entries are kept as a draft in the browser, so a reload or lost signal does not lose your notes.
-- **AI assistant (optional, runs locally on the CPU):** ask questions about your entries, get statistics explained, and let the model suggest a title and tags while you write. See [AI assistant](#ai-assistant).
-- Track team members and people who discovered each find.
-- SQLite storage for simple multi-user access on the same network.
-- Require login for all users, with an owner-admin able to manage entries and accounts.
-- Search entries by title, notes, or tags, plus view shared finds on a map.
-- Auto-fill weather from coordinates (via wttr.in) when the weather field is left blank.
-- Toggle between light and dark themes for field conditions.
-- Browse a user directory with profile details, selfies, and linked entries.
-=======
->>>>>>> Stashed changes
 
 - **Diary Entries** — Add entries with timestamp, weather, and rich notes
 - **GPS Capture** — Get coordinates directly from mobile browsers
 - **Media Attachments** — Photos, PDFs, and 3D models (GLB/GLTF) rendered in-browser
+- **Multi-file attach** — drag & drop, repeated picks add up, paste screenshots, camera button on phones, previews, per-file remove and an upload progress bar
+- **Edit attachments** — Remove old attachments or add more; download all attachments of an entry as one ZIP
+- **Image viewer** — Click an image on an entry to open a full-screen viewer (arrow keys / swipe)
+- **Draft persistence** — Unsaved new entries are kept as a draft in the browser
+- **AI assistant (optional, runs locally on the CPU)** — Ask questions about your entries, get statistics explained, and let the model suggest a title and tags while you write. See [AI Assistant](#ai-assistant)
 - **Team Collaboration** — Track team members and discoverers for each find
 - **SQLite Storage** — Simple multi-user access on the same network
 - **Role-Based Auth** — Login required for all users; owner-admin manages entries and accounts
@@ -54,11 +41,8 @@ Visit `http://localhost:8000` from your desktop or mobile device on the same net
 
 If no users exist, open `/setup` to create the owner account. The owner can then create more users from the admin panel.
 
-<<<<<<< Updated upstream
-## Configuration
-- `ARCHAIN_MAX_UPLOAD_MB` – maximum size of one upload request (all files of one entry together). Default `200`.
+## AI Assistant
 
-## AI assistant
 The assistant answers questions about the entries a user may see, explains the diary statistics, and suggests a title and tags on the entry form. It is optional: if no model server is running, the rest of Archain works exactly as before and the Assistant page tells you what is missing.
 
 **How it works.** Archain itself needs no new Python packages. It talks over HTTP to a local model server that does the heavy lifting on the CPU:
@@ -79,22 +63,26 @@ Any other OpenAI-compatible server works too, for example llama.cpp's `llama-ser
 
 Smaller models are quicker but make more mistakes, and quality in languages other than English varies, so try two or three. Answers always link to the entries they used.
 
-**Settings** (environment variables, all optional):
+**Configuration.** All AI settings are in `ai/ai_config.json`. Environment variables (`ARCHAIN_AI_*`) override the config file.
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `ARCHAIN_AI` | `on` | `off` hides the assistant completely. |
-| `ARCHAIN_AI_BACKEND` | `ollama` | `ollama` or `openai` (OpenAI-compatible server). |
-| `ARCHAIN_AI_URL` | `http://127.0.0.1:11434` | Address of the model server. In Docker use `http://host.docker.internal:11434`. |
-| `ARCHAIN_AI_MODEL` | `qwen3.5:4b` | Model name. |
-| `ARCHAIN_AI_THREADS` | auto | CPU threads. Auto lets Ollama choose the optimal number (physical or performance cores); set a number to override. |
-| `ARCHAIN_AI_USE_GPU` | `0` | CPU only by default for maximum compatibility. `1` lets the server use a GPU if it finds one. |
-| `ARCHAIN_AI_CTX` | `4096` | Context window in tokens. |
-| `ARCHAIN_AI_MAX_TOKENS` | `400` | Maximum length of one answer. |
-| `ARCHAIN_AI_CONTEXT_CHARS` | `3500` | How much diary text is sent with each question. Raise it on fast CPUs, lower it on a Pi. |
-| `ARCHAIN_AI_KEEP_ALIVE` | `30m` | How long Ollama keeps the model in memory after the last question. |
-| `ARCHAIN_AI_TIMEOUT` | `300` | Seconds to wait for the model server. |
-| `ARCHAIN_AI_API_KEY` | empty | Bearer token for OpenAI-compatible servers that require one. |
+| Config Key | Env Var | Default | Meaning |
+| --- | --- | --- | --- |
+| `enabled` | `ARCHAIN_AI` | `true` | `false` hides the assistant completely. |
+| `backend` | `ARCHAIN_AI_BACKEND` | `ollama` | `ollama` or `openai` (OpenAI-compatible server). |
+| `url` | `ARCHAIN_AI_URL` | `http://127.0.0.1:11434` | Address of the model server. In Docker use `http://host.docker.internal:11434`. |
+| `model` | `ARCHAIN_AI_MODEL` | (auto) | Model name. If empty, auto-detects from Ollama using `default_model`. |
+| `default_model` | — | `qwen3.5:4b` | Fallback model for Ollama auto-detection. |
+| `threads` | `ARCHAIN_AI_THREADS` | auto | CPU threads. Auto lets Ollama choose; set a number to override. |
+| `use_gpu` | `ARCHAIN_AI_USE_GPU` | `false` | CPU only by default. `true` lets the server use a GPU if available. |
+| `ctx` | `ARCHAIN_AI_CTX` | `4096` | Context window in tokens. |
+| `max_tokens` | `ARCHAIN_AI_MAX_TOKENS` | `400` | Maximum length of one answer. |
+| `context_chars` | `ARCHAIN_AI_CONTEXT_CHARS` | `3500` | How much diary text is sent with each question. |
+| `keep_alive` | `ARCHAIN_AI_KEEP_ALIVE` | `30m` | How long Ollama keeps the model in memory after the last question. |
+| `timeout` | `ARCHAIN_AI_TIMEOUT` | `300` | Seconds to wait for the model server. |
+| `queue_timeout` | `ARCHAIN_AI_QUEUE_TIMEOUT` | `90` | Seconds to wait for the generation queue. |
+| `api_key` | `ARCHAIN_AI_API_KEY` | empty | Bearer token for OpenAI-compatible servers that require one. |
+| `system_prompt` | — | (built-in) | System prompt for chat. |
+| `suggest_prompt` | — | (built-in) | Prompt for title/tags suggestion. |
 
 **Why it stays fast on a CPU.** Reading the prompt is the slow part on a CPU, so each question sends only the diary overview plus the few most relevant entries (keyword search that ignores accents and word endings). Numbers such as counts per week are computed in Python, not guessed by the model. The model is loaded when you open the Assistant page and kept in memory, answers stream in word by word, and only one answer is generated at a time so several users do not fight for the same cores.
 
@@ -102,13 +90,7 @@ Smaller models are quicker but make more mistakes, and quality in languages othe
 
 **Tuning tips.** Watch the speed shown under each answer (tokens/s). If the first answer takes very long, the model is probably still loading from a slow SD card or disk. Setting `OLLAMA_NUM_PARALLEL=1` and `OLLAMA_MAX_LOADED_MODELS=1` for the Ollama service saves memory on small machines.
 
-## Raspberry Pi 5 notes
-- Uses only Python + SQLite, so it runs well on ARM64.
-- For multi-user access, run `python app.py` and keep the Pi on your local network.
-- Store the `diary.db` file in a backed-up location for long-term preservation.
-=======
 ## Raspberry Pi 5 Deployment
->>>>>>> Stashed changes
 
 - Uses only Python + SQLite, so it runs well on ARM64
 - For multi-user access, run `python app.py` and keep the Pi on your local network
@@ -156,27 +138,31 @@ docker run -p 8000:8000 \
 
 ```
 Archain/
-├── app.py                 # Main Flask application
-├── requirements.txt       # Python dependencies
-├── Dockerfile             # Container definition
-├── diary.db               # SQLite database (created on first run)
-├── uploads/               # Attached media files
+├── app.py                   # Main Flask application
+├── ai/                      # AI assistant package
+│   ├── __init__.py
+│   ├── ai.py                # AI client + prompt logic
+│   └── ai_config.json       # AI configuration (all settings)
+├── requirements.txt         # Python dependencies
+├── Dockerfile               # Container definition
+├── diary.db                 # SQLite database (created on first run)
+├── uploads/                 # Attached media files
 ├── static/
-│   └── styles.css         # Stylesheet with light/dark themes
-└── templates/             # Jinja2 templates
-    ├── base.html          # Base layout
-    ├── index.html         # Entry list with search
-    ├── entry_form.html    # Create/edit entry form
-    ├── entry_detail.html  # Entry detail view
-    ├── login.html         # Login page
-    ├── setup.html         # First-admin setup
-    ├── map.html           # Map view of entries
-    ├── users.html         # Admin user management
-    ├── edit_user.html     # Admin edit user
-    ├── people.html        # Admin manage people
-    ├── user_directory.html# Team directory
-    ├── user_profile.html  # Profile view
-    └── edit_profile.html  # Profile editing
+│   └── styles.css           # Stylesheet with light/dark themes
+└── templates/               # Jinja2 templates
+    ├── base.html            # Base layout
+    ├── index.html           # Entry list with search
+    ├── entry_form.html      # Create/edit entry form
+    ├── entry_detail.html    # Entry detail view
+    ├── login.html           # Login page
+    ├── setup.html           # First-admin setup
+    ├── map.html             # Map view of entries
+    ├── users.html           # Admin user management
+    ├── edit_user.html       # Admin edit user
+    ├── people.html          # Admin manage people
+    ├── user_directory.html  # Team directory
+    ├── user_profile.html    # Profile view
+    └── edit_profile.html    # Profile editing
 ```
 
 ## Data Model
@@ -205,6 +191,31 @@ Environment variables (optional):
 | `SECRET_KEY` | `dev-secret-change-me` | Flask session secret (change in production!) |
 | `DATABASE_URL` | `sqlite:///diary.db` | SQLAlchemy database URI |
 | `MAX_CONTENT_LENGTH` | `52428800` (50MB) | Max upload size |
+| `ARCHAIN_TILE_URL` | OSM URL | Tile server template (e.g. `http://localhost:8080/{z}/{x}/{y}.png` for local tileserver-gl, or `/tiles/{z}/{x}/{y}.png` for local `tiles/` dir) |
+| `ARCHAIN_TILE_ATTRIBUTION` | OSM | Attribution text for tile layer |
+
+## Offline Map Tiles (Pi Field Deployment)
+
+For Raspberry Pi deployments without internet, you can use local map tiles:
+
+**Option 1: Local tile server (tileserver-gl)**
+```bash
+# Install tileserver-gl
+docker run -it -v $(pwd)/tiles:/data -p 8080:80 maptiler/tileserver-gl
+# Set env var
+ARCHAIN_TILE_URL=http://localhost:8080/{z}/{x}/{y}.png python app.py
+```
+
+**Option 2: Local tile directory**
+```bash
+# Create tiles directory and download tiles for your area
+mkdir -p tiles
+# Use a tool like maptiles or mobac to download tiles to tiles/{z}/{x}/{y}.png
+# Set env var
+ARCHAIN_TILE_URL=/tiles/{z}/{x}/{y}.png python app.py
+```
+
+The app serves tiles from the `tiles/` directory via `/tiles/{z}/{x}/{y}.png`.
 
 ## API Endpoints
 
@@ -237,7 +248,16 @@ Environment variables (optional):
 
 ### Utilities
 - `GET /uploads/<filename>` — Serve uploaded files (auth required)
+- `GET /tiles/<path>` — Serve local map tiles (auth required)
 - `GET /weather?lat=X&lon=Y` — Fetch weather for coordinates
+
+### AI Assistant (when enabled)
+- `GET /assistant` — Chat UI
+- `GET /assistant/status` — Server status
+- `GET /assistant/models` — Available models
+- `POST /assistant/warmup` — Preload model
+- `POST /assistant/chat` — Stream chat response
+- `POST /assistant/suggest` — Suggest title/tags
 
 ## Security Notes
 

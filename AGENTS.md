@@ -5,16 +5,26 @@ Lightweight archaeological field diary for Raspberry Pi 5. Flask + SQLite, optio
 
 ## Directory Structure
 ```
-Archain-main/
-├── app.py           # Main Flask app (950 lines) — routes, models, helpers
-├── ai.py            # AI assistant client + prompt logic (706 lines)
-├── ai_config.json   # AI prompts & default model configuration
-├── requirements.txt # Flask, Flask-SQLAlchemy, SQLAlchemy
-├── Dockerfile       # python:3.11-slim
-├── README.md        # Full docs (config, AI, Pi notes)
-├── diary.db         # SQLite database (gitignored)
-├── uploads/         # Attachment storage (gitignored)
-├── templates/       # 13 Jinja2 templates
+Archain/
+├── app.py                   # Main Flask app (routes, models, helpers)
+├── ai/                      # AI assistant package
+│   ├── __init__.py
+│   ├── ai.py                # AI client + prompt logic
+│   └── ai_config.json       # AI configuration (all settings)
+├── requirements.txt         # Flask, Flask-SQLAlchemy, SQLAlchemy
+├── Dockerfile               # python:3.11-slim
+├── README.md                # Project docs (config, AI, Pi notes)
+├── CONTRIBUTING.md          # Contribution guidelines
+├── SECURITY.md              # Security policy & vulnerability reporting
+├── CHANGELOG.md             # Version history
+├── LICENSE                  # MIT license
+├── diary.db                 # SQLite database (gitignored)
+├── uploads/                 # Attachment storage (gitignored)
+├── .github/
+│   ├── workflows/
+│   │   └── ci.yml           # CI pipeline (lint, format, syntax check)
+│   └── dependabot.yml       # Weekly dependency updates
+├── templates/               # 13 Jinja2 templates
 │   ├── base.html
 │   ├── index.html
 │   ├── map.html
@@ -54,15 +64,28 @@ Archain-main/
 - **Helpers** (lines 725–946): attachment handling, permissions, tag parsing, weather fetch, AI entry filtering
 
 ### ai.py
-- **AIConfig** (line 58): all settings via `ARCHAIN_AI_*` env vars
-- **AIClient** (line 165): HTTP to Ollama/OpenAI-compatible server, streaming, queue lock
-- **Prompt building** (line 615): keyword ranking, stats, context budgeting, think-block stripping
-- **Suggest** (line 665): title + tags from notes
-- **Model selection**: fetches available models from Ollama if `ARCHAIN_AI_MODEL` not set
+- **AIConfig** (line 72): all settings via `ai_config.json` with `ARCHAIN_AI_*` env var overrides
+- **AIClient** (line 203): HTTP to Ollama/OpenAI-compatible server, streaming, queue lock
+- **Prompt building** (line 695): keyword ranking, stats, context budgeting, think-block stripping
+- **Suggest** (line 745): title + tags from notes
+- **Model selection**: fetches available models from Ollama if `model` not set in config
 - **fetch_ollama_models()**: queries Ollama `/api/tags` for installed models
 
 ### ai_config.json
-- AI prompts and default model configuration (system_prompt, suggest_prompt, default_model)
+- Complete AI configuration: enabled flag, backend, URL, model, threads, context, tokens, GPU, timeouts, API key, prompts
+- Environment variables (`ARCHAIN_AI_*`) override config file values
+- Set `"enabled": false` to disable AI assistant entirely (hides UI, disables endpoints)
+
+### Documentation Files
+- **README.md** — Project overview, quick start, Pi deployment, Docker, data model, API endpoints, security
+- **CONTRIBUTING.md** — Contribution guidelines, dev setup, testing checklist, architecture notes
+- **SECURITY.md** — Supported versions, vulnerability reporting, known limitations, hardening recommendations
+- **CHANGELOG.md** — Version history
+- **LICENSE** — MIT license
+
+### GitHub Configuration
+- **.github/workflows/ci.yml** — CI pipeline (lint, format, syntax check)
+- **.github/dependabot.yml** — Weekly dependency updates
 
 ## Database Schema (SQLAlchemy)
 | Table | Purpose |
@@ -75,21 +98,33 @@ Archain-main/
 | entry_users, entry_people, entry_tags | many-to-many joins |
 
 ## Environment Variables
+All AI settings are configured in `ai/ai_config.json`. Environment variables (`ARCHAIN_AI_*`) override the config file.
+
+| Config Key | Env Var | Default | Purpose |
+|------------|---------|---------|---------|
+| `enabled` | `ARCHAIN_AI` | `true` | `false` disables assistant entirely |
+| `backend` | `ARCHAIN_AI_BACKEND` | `ollama` | `ollama` or `openai` |
+| `url` | `ARCHAIN_AI_URL` | `http://127.0.0.1:11434` | Model server |
+| `model` | `ARCHAIN_AI_MODEL` | (auto from Ollama) | Model name; if empty, picks first matching `default_model` from Ollama |
+| `default_model` | — | `qwen3.5:4b` | Fallback model name for Ollama auto-detection |
+| `threads` | `ARCHAIN_AI_THREADS` | `null` (auto) | CPU threads (1–512) |
+| `ctx` | `ARCHAIN_AI_CTX` | `4096` | Context tokens (1024–131072) |
+| `max_tokens` | `ARCHAIN_AI_MAX_TOKENS` | `400` | Answer length (32–4096) |
+| `context_chars` | `ARCHAIN_AI_CONTEXT_CHARS` | `3500` | Diary text per question (800–60000) |
+| `use_gpu` | `ARCHAIN_AI_USE_GPU` | `false` | GPU off by default |
+| `keep_alive` | `ARCHAIN_AI_KEEP_ALIVE` | `30m` | Ollama keep-alive |
+| `timeout` | `ARCHAIN_AI_TIMEOUT` | `300` | Request timeout (10–3600s) |
+| `queue_timeout` | `ARCHAIN_AI_QUEUE_TIMEOUT` | `90` | Queue wait timeout (1–3600s) |
+| `api_key` | `ARCHAIN_AI_API_KEY` | `""` | Bearer token for OpenAI backend |
+| `system_prompt` | — | (built-in) | System prompt for chat |
+| `suggest_prompt` | — | (built-in) | Prompt for title/tags suggestion |
+
+Other:
 | Var | Default | Purpose |
 |-----|---------|---------|
 | `ARCHAIN_MAX_UPLOAD_MB` | 200 | Max upload size per entry |
-| `ARCHAIN_AI` | on | `off` disables assistant |
-| `ARCHAIN_AI_BACKEND` | ollama | `ollama` or `openai` |
-| `ARCHAIN_AI_URL` | http://127.0.0.1:11434 | Model server |
-| `ARCHAIN_AI_MODEL` | (auto from Ollama) | Model name; if unset, picks first matching default_model from Ollama |
-| `ARCHAIN_AI_THREADS` | auto | CPU threads |
-| `ARCHAIN_AI_USE_GPU` | 0 | GPU off by default |
-| `ARCHAIN_AI_CTX` | 4096 | Context tokens |
-| `ARCHAIN_AI_MAX_TOKENS` | 400 | Answer length |
-| `ARCHAIN_AI_CONTEXT_CHARS` | 3500 | Diary text per question |
-| `ARCHAIN_AI_KEEP_ALIVE` | 30m | Ollama keep-alive |
-| `ARCHAIN_AI_TIMEOUT` | 300 | Request timeout |
-| `ARCHAIN_AI_API_KEY` | "" | Bearer token for OpenAI backend |
+| `ARCHAIN_TILE_URL` | OSM URL | Tile server template (e.g. `http://localhost:8080/{z}/{x}/{y}.png` for local tileserver-gl, or `/tiles/{z}/{x}/{y}.png` for local `tiles/` dir) |
+| `ARCHAIN_TILE_ATTRIBUTION` | OSM | Attribution text for tile layer |
 
 ## Running
 ```bash
@@ -134,3 +169,9 @@ docker run -p 8000:8000 -v $(pwd)/uploads:/app/uploads -v $(pwd)/diary.db:/app/d
 - **Edit AI prompts**: modify `ai_config.json`
 - **Reset DB**: delete `diary.db`, restart, visit `/setup`
 - **Backup**: copy `diary.db` + `uploads/`
+- **Run CI locally**: `pip install ruff && ruff check . && ruff format --check . && python -m py_compile app.py`
+
+## ⚠️ Critical Rules
+- **NEVER delete or overwrite `diary.db`** — this is the user's production data. Only delete if explicitly instructed by the user.
+- **NEVER run destructive DB operations** (drop tables, delete data) without explicit user confirmation.
+- Map rendering: the `#entry-map` container must have explicit height (560px) and be visible when Leaflet initializes. Call `map.invalidateSize()` after any tab switch or visibility change.

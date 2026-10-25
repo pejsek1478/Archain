@@ -8,7 +8,7 @@ Design goals: stable and portable first, fast second.
   right CPU code path at run time (AVX2/AVX-512 on Intel and AMD, NEON on ARM) and use
   several threads, so this app never has to be compiled for a specific processor.
 * CPU only by default: GPU drivers are the most common source of crashes, so the GPU is
-  never touched unless ARCHAIN_AI_USE_GPU=1.
+  never touched unless use_gpu=true.
 * On a CPU the expensive part is reading the prompt, so the app sends a *small* prompt:
   statistics are computed in Python and only the few most relevant entries are included.
 * Only one generation runs at a time (extra requests wait in a short queue), because
@@ -35,19 +35,12 @@ CONFIG_PATH = Path(__file__).with_name("ai_config.json")
 
 
 def load_ai_config():
-    """Load AI prompts from JSON config file."""
+    """Load AI configuration from JSON config file."""
     try:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except (OSError, json.JSONDecodeError):
-        return {
-            "system_prompt": "You are the assistant of Archain, a field diary for archaeologists. Answer using ONLY the diary overview and entries given below. If the answer is not in them, say that the diary does not contain it. Never invent finds, dates, measurements or places. Cite entries as [#id], for example [#12]. Reply in the language of the user's question. Be short and concrete.",
-            "suggest_prompt": "You label entries of an archaeological field diary.\nReply with exactly two lines and nothing else:\nTitle: <short title, at most 8 words>\nTags: <3 to 6 short lowercase tags separated by commas>\nKeep the words 'Title:' and 'Tags:' in English, but write the title and the tags in the language of the notes. Reuse these existing tags when they fit: {existing_tags}.",
-            "default_model": "qwen3.5:4b"
-        }
-
-
-AI_PROMPTS = load_ai_config()
+        return {}
 
 
 def _int(value, default, low, high):
@@ -56,6 +49,38 @@ def _int(value, default, low, high):
     except (TypeError, ValueError):
         return default
     return max(low, min(high, number))
+
+
+def _get_bool(config, key, default=False, env_key=None):
+    """Get boolean value from config, with env var override."""
+    if env_key and env_key in os.environ:
+        return os.environ[env_key].strip().lower() in TRUE_VALUES
+    val = config.get(key, default)
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.strip().lower() in TRUE_VALUES
+    return default
+
+
+def _get_str(config, key, default="", env_key=None):
+    """Get string value from config, with env var override."""
+    if env_key and env_key in os.environ:
+        return os.environ[env_key].strip()
+    val = config.get(key, default)
+    if val is None:
+        return default
+    return str(val).strip()
+
+
+def _get_int(config, key, default, low, high, env_key=None):
+    """Get integer value from config, with env var override."""
+    if env_key and env_key in os.environ:
+        return _int(os.environ[env_key], default, low, high)
+    val = config.get(key, default)
+    if val is None:
+        return default
+    return _int(val, default, low, high)
 
 
 def fetch_ollama_models(url):
@@ -70,36 +95,59 @@ def fetch_ollama_models(url):
 
 
 class AIConfig:
-    """All settings come from environment variables (see README)."""
+    """Configuration loaded from ai_config.json with environment variable overrides.
+    
+    Environment variables (ARCHAIN_AI_*) take precedence over the config file.
+    """
 
-    def __init__(self, env=None):
+    def __init__(self, env=None, config=None):
         env = os.environ if env is None else env
-        self.enabled = env.get("ARCHAIN_AI", "on").strip().lower() not in FALSE_VALUES
-        backend = env.get("ARCHAIN_AI_BACKEND", "ollama").strip().lower()
-        self.backend = backend if backend in {"ollama", "openai"} else "ollama"
-        default_url = "http://127.0.0.1:11434" if self.backend == "ollama" else "http://127.0.0.1:8080"
-        self.url = env.get("ARCHAIN_AI_URL", default_url).strip().rstrip("/") or default_url
+        config = config if config is not None else load_ai_config()
         
-        # Load model from env or fetch from Ollama
-        env_model = env.get("ARCHAIN_AI_MODEL", "").strip()
+        self.enabled = _get_bool(config, "enabled", True, "ARCHAIN_AI")
+        self.backend = _get_str(config, "backend", "ollama", "ARCHAIN_AI_BACKEND").lower()
+        if self.backend not in {"ollama", "openai"}:
+            self.backend = "ollama"
+        
+        default_url = "http://127.0.0.1:11434" if self.backend == "ollama" else "http://127.0.0.1:8080"
+        self.url = _get_str(config, "url", default_url, "ARCHAIN_AI_URL").rstrip("/")
+        
+        # Load model from config/env or fetch from Ollama
+        env_model = _get_str(config, "model", "", "ARCHAIN_AI_MODEL")
         if env_model:
             self.model = env_model
         elif self.backend == "ollama":
+            default_model = _get_str(config, "default_model", "qwen3.5:4b")
             models = fetch_ollama_models(self.url)
-            self.model = next((m for m in models if AI_PROMPTS.get("default_model", "qwen3.5:4b") in m), AI_PROMPTS.get("default_model", "qwen3.5:4b"))
+            self.model = next((m for m in models if default_model in m), default_model)
         else:
-            self.model = AI_PROMPTS.get("default_model", "qwen3.5:4b")
+            self.model = _get_str(config, "default_model", "qwen3.5:4b")
             
         # None = let the runtime choose (Ollama picks the physical/performance cores).
-        self.threads = _int(env.get("ARCHAIN_AI_THREADS"), None, 1, 512)
-        self.ctx = _int(env.get("ARCHAIN_AI_CTX"), 4096, 1024, 131072)
-        self.max_tokens = _int(env.get("ARCHAIN_AI_MAX_TOKENS"), 400, 32, 4096)
-        self.context_chars = _int(env.get("ARCHAIN_AI_CONTEXT_CHARS"), 3500, 800, 60000)
-        self.use_gpu = env.get("ARCHAIN_AI_USE_GPU", "0").strip().lower() in TRUE_VALUES
-        self.keep_alive = env.get("ARCHAIN_AI_KEEP_ALIVE", "30m").strip() or "30m"
-        self.timeout = _int(env.get("ARCHAIN_AI_TIMEOUT"), 300, 10, 3600)
-        self.queue_timeout = _int(env.get("ARCHAIN_AI_QUEUE_TIMEOUT"), 90, 1, 3600)
-        self.api_key = env.get("ARCHAIN_AI_API_KEY", "").strip()
+        self.threads = _get_int(config, "threads", None, 1, 512, "ARCHAIN_AI_THREADS")
+        self.ctx = _get_int(config, "ctx", 4096, 1024, 131072, "ARCHAIN_AI_CTX")
+        self.max_tokens = _get_int(config, "max_tokens", 400, 32, 4096, "ARCHAIN_AI_MAX_TOKENS")
+        self.context_chars = _get_int(config, "context_chars", 3500, 800, 60000, "ARCHAIN_AI_CONTEXT_CHARS")
+        self.use_gpu = _get_bool(config, "use_gpu", False, "ARCHAIN_AI_USE_GPU")
+        self.keep_alive = _get_str(config, "keep_alive", "30m", "ARCHAIN_AI_KEEP_ALIVE") or "30m"
+        self.timeout = _get_int(config, "timeout", 300, 10, 3600, "ARCHAIN_AI_TIMEOUT")
+        self.queue_timeout = _get_int(config, "queue_timeout", 90, 1, 3600, "ARCHAIN_AI_QUEUE_TIMEOUT")
+        self.api_key = _get_str(config, "api_key", "", "ARCHAIN_AI_API_KEY")
+        
+        # Prompts
+        self.system_prompt = _get_str(config, "system_prompt", 
+            "You are the assistant of Archain, a field diary for archaeologists.\n"
+            "Answer using ONLY the diary overview and entries given below. If the answer is not in them, "
+            "say that the diary does not contain it. Never invent finds, dates, measurements or places.\n"
+            "Cite entries as [#id], for example [#12]. Reply in the language of the user's question. "
+            "Be short and concrete.")
+        self.suggest_prompt = _get_str(config, "suggest_prompt",
+            "You label entries of an archaeological field diary.\n"
+            "Reply with exactly two lines and nothing else:\n"
+            "Title: <short title, at most 8 words>\n"
+            "Tags: <3 to 6 short lowercase tags separated by commas>\n"
+            "Keep the words 'Title:' and 'Tags:' in English, but write the title and the tags "
+            "in the language of the notes. Reuse these existing tags when they fit: {existing_tags}.")
 
 
 class AIError(Exception):
@@ -593,7 +641,12 @@ def stats_text(stats):
 
 
 # ---------------------------------------------------------------------- prompts
-SYSTEM_PROMPT = AI_PROMPTS.get("system_prompt", "You are the assistant of Archain, a field diary for archaeologists.\nAnswer using ONLY the diary overview and entries given below. If the answer is not in them, say that the diary does not contain it. Never invent finds, dates, measurements or places.\nCite entries as [#id], for example [#12]. Reply in the language of the user's question. Be short and concrete.")
+def _get_system_prompt(cfg):
+    return cfg.system_prompt
+
+
+def _get_suggest_prompt(cfg):
+    return cfg.suggest_prompt
 
 
 def entry_block(entry, note_chars):
@@ -651,7 +704,7 @@ def build_chat_messages(question, history, entries, cfg, focus_id=None):
     """
     question = question.strip()[:1000]
     overview = stats_text(build_stats(entries))
-    system = SYSTEM_PROMPT + "\n\nDIARY OVERVIEW\n" + overview  # stable prefix: cached by the server between turns
+    system = _get_system_prompt(cfg) + "\n\nDIARY OVERVIEW\n" + overview  # stable prefix: cached by the server between turns
 
     prompt_budget = int((cfg.ctx - cfg.max_tokens - 256) * 2.5)  # ~2.5 characters per token is safe for most languages
     history_budget = min(2400, max(0, prompt_budget // 4))
@@ -694,9 +747,9 @@ def build_chat_messages(question, history, entries, cfg, focus_id=None):
     return messages, sources
 
 
-def build_suggest_messages(title, notes, existing_tags):
+def build_suggest_messages(title, notes, existing_tags, cfg):
     existing = ", ".join(existing_tags[:40]) or "(none yet)"
-    template = AI_PROMPTS.get("suggest_prompt", "You label entries of an archaeological field diary.\nReply with exactly two lines and nothing else:\nTitle: <short title, at most 8 words>\nTags: <3 to 6 short lowercase tags separated by commas>\nKeep the words 'Title:' and 'Tags:' in English, but write the title and the tags in the language of the notes. Reuse these existing tags when they fit: {existing_tags}.")
+    template = _get_suggest_prompt(cfg)
     system = template.format(existing_tags=existing)
     user = f"Current title: {title.strip() or '(none)'}\nNotes:\n{' '.join(notes.split())[:1500]}"
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]

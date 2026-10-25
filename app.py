@@ -30,6 +30,8 @@ import ai
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+TILES_DIR = BASE_DIR / "tiles"
+TILES_DIR.mkdir(exist_ok=True)
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{BASE_DIR / 'diary.db'}"
@@ -39,6 +41,12 @@ app.config["SECRET_KEY"] = "dev-secret-change-me"
 # Override with e.g. ARCHAIN_MAX_UPLOAD_MB=500 on a Pi with a big SD card.
 MAX_UPLOAD_MB = int(os.environ.get("ARCHAIN_MAX_UPLOAD_MB", "200"))
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
+
+# Map tile server - override with ARCHAIN_TILE_URL for local/offline tiles
+# Default: OSM. For local tiles: "http://localhost:8080/{z}/{x}/{y}.png" (tileserver-gl)
+# For local directory: "/tiles/{z}/{x}/{y}.png" (place tiles in tiles/ dir)
+TILE_URL_TEMPLATE = os.environ.get("ARCHAIN_TILE_URL", "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+TILE_ATTRIBUTION = os.environ.get("ARCHAIN_TILE_ATTRIBUTION", "&copy; OpenStreetMap contributors")
 
 # Optional local AI assistant (see README). Everything is configured through ARCHAIN_AI_* variables.
 AI_CONFIG = ai.AIConfig()
@@ -154,7 +162,12 @@ def load_current_user():
 
 @app.context_processor
 def inject_upload_limits():
-    return {"max_upload_mb": MAX_UPLOAD_MB, "ai_enabled": AI_CONFIG.enabled}
+    return {
+        "max_upload_mb": MAX_UPLOAD_MB, 
+        "ai_enabled": AI_CONFIG.enabled,
+        "tile_url_template": TILE_URL_TEMPLATE,
+        "tile_attribution": TILE_ATTRIBUTION,
+    }
 
 
 @app.errorhandler(413)
@@ -500,7 +513,7 @@ def assistant_suggest():
     notes = str(payload.get("notes", ""))[:4000]
     if len(notes.strip()) < 15:
         return jsonify(error="Write a few more words of field notes first."), 400
-    messages = ai.build_suggest_messages(title, notes, ai.popular_tags(_ai_entries()))
+    messages = ai.build_suggest_messages(title, notes, ai.popular_tags(_ai_entries()), AI_CONFIG)
     try:
         reply = AI_CLIENT.complete(messages, max_tokens=80, temperature=0.2)
     except ai.AIError as err:
@@ -736,6 +749,14 @@ def uploaded_file(filename):
     if not g.user:
         return redirect(url_for("login"))
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+
+@app.route("/tiles/<path:path>")
+def tile_file(path):
+    """Serve local map tiles from tiles/ directory for offline use."""
+    if not g.user:
+        return redirect(url_for("login"))
+    return send_from_directory(TILES_DIR, path)
 
 
 @app.route("/weather")
