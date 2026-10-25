@@ -3,16 +3,18 @@
 {% block title %}Map{% endblock %}
 
 {% block content %}
-<section class="hero">
-  <div>
-    <h2>Entry map</h2>
-    <p>View every entry shared with you on a single map. Entries without coordinates are hidden.</p>
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <div>
+      <h1 class="card-title">Entry map</h1>
+      <p class="card-subtitle">View every entry shared with you on a single map. Entries without coordinates are hidden.</p>
+    </div>
   </div>
-</section>
+</div>
 
-<section class="card">
-  <div id="entry-map" class="map-panel large"></div>
-</section>
+<div class="card" style="padding: 0; overflow: hidden; position: relative;">
+  <div id="entry-map" class="map-frame" style="height: 560px;"></div>
+</div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -29,21 +31,52 @@
     {% endfor %}
   ];
 
-  const map = L.map('entry-map');
-  if (entries.length) {
-    map.setView([entries[0].lat, entries[0].lon], 6);
-  } else {
-    map.setView([20, 0], 2);
+  // Tile server: configured one if the backend passes it, otherwise plain OSM (same as the old working version)
+  const tileUrl = {{ (tile_url_template or 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')|tojson }};
+  const tileAttrib = {{ (tile_attribution or '&copy; OpenStreetMap contributors')|tojson }};
+  const isLocalTile = tileUrl.startsWith('/tiles/');
+
+  function escapeHtml(v) {
+    return String(v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
   }
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+  function initMap() {
+    const map = L.map('entry-map');
+    const emptyEl = document.getElementById('map-empty');
 
-  entries.forEach((entry) => {
-    const marker = L.marker([entry.lat, entry.lon]).addTo(map);
-    marker.bindPopup(`<strong>${entry.title}</strong><br />${entry.time}<br /><a href="/entries/${entry.id}">Open entry</a>`);
-  });
+    if (entries.length) {
+      map.setView([entries[0].lat, entries[0].lon], 6);
+      if (emptyEl) emptyEl.classList.remove('visible');
+    } else {
+      map.setView([20, 0], 2);
+      if (emptyEl) emptyEl.classList.add('visible');
+    }
+
+    L.tileLayer(tileUrl, {
+      maxZoom: 19,
+      attribution: tileAttrib,
+      subdomains: isLocalTile ? [] : 'abc',
+      noWrap: isLocalTile
+    }).addTo(map);
+
+    entries.forEach(function (e) {
+      const marker = L.marker([e.lat, e.lon]).addTo(map);
+      marker.bindPopup('<strong>' + escapeHtml(e.title) + '</strong><br />' + escapeHtml(e.time) + '<br /><a href="/entries/' + e.id + '">Open entry</a>');
+    });
+
+    if (entries.length > 1) {
+      map.fitBounds(entries.map(function (e) { return [e.lat, e.lon]; }), { padding: [40, 40], maxZoom: 15 });
+    }
+
+    setTimeout(function () { map.invalidateSize(); }, 100);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMap);
+  } else {
+    initMap();
+  }
 </script>
 {% endblock %}

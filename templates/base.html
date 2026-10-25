@@ -8,56 +8,87 @@
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 <body>
-  <header class="site-header">
-    <div>
-      <p class="kicker">Archaeological Field Diary</p>
-      <h1>Archain Field Diary</h1>
-    </div>
-    <nav>
-      {% if g.user %}
-        <a href="{{ url_for('index') }}">Entries</a>
-        <a href="{{ url_for('new_entry') }}">New entry</a>
-        <a href="{{ url_for('map_view') }}">Map</a>
-        <a href="{{ url_for('user_directory') }}">Users</a>
-        {% if g.user.is_admin %}
-          <a href="{{ url_for('manage_people') }}">Finders</a>
-          <a href="{{ url_for('manage_users') }}">Admin panel</a>
-        {% endif %}
-        <button class="button ghost theme-toggle" type="button" onclick="toggleTheme()">Theme</button>
-        <form method="post" action="{{ url_for('logout') }}">
-          <button class="link button-link" type="submit">Sign out ({{ g.user.name }})</button>
-        </form>
-      {% else %}
-        <a href="{{ url_for('login') }}">Sign in</a>
-      {% endif %}
-    </nav>
-  </header>
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <a class="nav-brand" href="{{ url_for('index') }}" aria-label="Archain Field Diary - Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3v18M3 12h18M12 3a9 9 0 0 1 9 9v0a9 9 0 0 1-9 9H3a9 9 0 0 1-9-9v0a9 9 0 0 1 9-9z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+      <span>Archain</span>
+    </a>
 
-  <main class="container">
+    {% if g.user %}
+    <div class="nav-center">
+      <div class="nav-tabs" role="tablist" aria-label="Main sections">
+        <a class="nav-tab {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}" role="tab" aria-selected="{{ request.endpoint == 'index' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span>Entries</span>
+        </a>
+        <a class="nav-tab {% if request.endpoint == 'new_entry' %}active{% endif %}" href="{{ url_for('new_entry') }}" role="tab" aria-selected="{{ request.endpoint == 'new_entry' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>New Entry</span>
+        </a>
+        <a class="nav-tab {% if request.endpoint == 'map_view' %}active{% endif %}" href="{{ url_for('map_view') }}" role="tab" aria-selected="{{ request.endpoint == 'map_view' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+          <span>Map</span>
+        </a>
+        {% if ai_enabled %}
+        <a class="nav-tab {% if request.endpoint == 'assistant' %}active{% endif %}" href="{{ url_for('assistant') }}" role="tab" aria-selected="{{ request.endpoint == 'assistant' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"/><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+          <span>AI Assistant</span>
+        </a>
+        {% endif %}
+        <a class="nav-tab {% if request.endpoint == 'user_directory' %}active{% endif %}" href="{{ url_for('user_directory') }}" role="tab" aria-selected="{{ request.endpoint == 'user_directory' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Users</span>
+        </a>
+        {% if g.user.is_admin %}
+        <a class="nav-tab {% if request.endpoint == 'manage_people' %}active{% endif %}" href="{{ url_for('manage_people') }}" role="tab" aria-selected="{{ request.endpoint == 'manage_people' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Finders</span>
+        </a>
+        <a class="nav-tab {% if request.endpoint == 'manage_users' %}active{% endif %}" href="{{ url_for('manage_users') }}" role="tab" aria-selected="{{ request.endpoint == 'manage_users' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+          <span>Admin</span>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="nav-right">
+      <div class="nav-user">
+        <div class="avatar avatar-sm">
+          {% if g.user.photo_filename %}
+            <img src="{{ url_for('uploaded_file', filename=g.user.photo_filename) }}" alt="" />
+          {% else %}
+            {{ g.user.name[:1].upper() }}
+          {% endif %}
+        </div>
+        <span>{{ g.user.name }}</span>
+        <form method="post" action="{{ url_for('logout') }}" style="margin:0;">
+          <button class="btn btn-ghost btn-sm" type="submit">Sign out</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="nav-right">
+      <a class="btn btn-primary" href="{{ url_for('login') }}">Sign in</a>
+    </div>
+    {% endif %}
+  </nav>
+
+  <main class="main" role="main">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="flash-stack">
-          {% for category, message in messages %}
-            <div class="flash flash-{{ category }}">{{ message }}</div>
-          {% endfor %}
-        </div>
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
       {% endif %}
     {% endwith %}
 
     {% block content %}{% endblock %}
   </main>
-  <script>
-    const storedTheme = localStorage.getItem('archain-theme');
-    if (storedTheme) {
-      document.body.dataset.theme = storedTheme;
-    }
 
-    function toggleTheme() {
-      const current = document.body.dataset.theme || 'light';
-      const next = current === 'light' ? 'dark' : 'light';
-      document.body.dataset.theme = next;
-      localStorage.setItem('archain-theme', next);
-    }
-  </script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

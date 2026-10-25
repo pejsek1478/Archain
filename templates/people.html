@@ -1,36 +1,68 @@
 {% extends 'base.html' %}
 
-{% block title %}Finders{% endblock %}
-
 {% block content %}
-<section class="form-card">
-  <h2>Add finder</h2>
-  <form method="post" class="stack">
-    <label>
-      Name
-      <input type="text" name="name" required />
-    </label>
-    <label>
-      Affiliation
-      <input type="text" name="affiliation" placeholder="Local museum" />
-    </label>
-    <button type="submit" class="button">Save</button>
-  </form>
-</section>
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <div>
+      <h1 class="card-title">Finders</h1>
+      <p class="card-subtitle">Manage people who discovered finds</p>
+    </div>
+  </div>
+</div>
 
-<section class="card">
-  <h3>Finders list</h3>
+<div class="grid two" style="margin-bottom: 24px;">
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Add finder</h2></div>
+    <form method="post" class="stack">
+      <div class="field-row two">
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" name="name" id="name" required autofocus />
+        </div>
+        <div class="field">
+          <label for="affiliation">Affiliation</label>
+          <input type="text" name="affiliation" id="affiliation" placeholder="Local museum, university, etc." />
+        </div>
+      </div>
+      <div class="actions"><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2 class="card-title">Quick stats</h2></div>
+    <div class="stats-grid">
+      <div><div class="stat-value">{{ people|length }}</div><div class="stat-label">Total finders</div></div>
+      <div><div class="stat-value">{{ people|selectattr('affiliation')|list|length }}</div><div class="stat-label">With affiliation</div></div>
+      <div><div class="stat-value">{{ people|rejectattr('affiliation')|list|length }}</div><div class="stat-label">No affiliation</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2 class="card-title">Finders list</h2></div>
   {% if people %}
     <ul class="list">
       {% for person in people %}
-        <li>
-          <strong>{{ person.name }}</strong>
-          {% if person.affiliation %}<span>{{ person.affiliation }}</span>{% endif %}
-        </li>
+      <li class="list-item">
+        <div class="list-main">
+          <div class="list-title">{{ person.name }}</div>
+          {% if person.affiliation %}<div class="list-meta">{{ person.affiliation }}</div>{% endif %}
+        </div>
+        <div class="list-actions">
+          <form method="post" action="{{ url_for('manage_people') }}" onsubmit="return confirm('Delete this finder?');" style="margin:0;">
+            <input type="hidden" name="delete_id" value="{{ person.id }}" />
+            <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+          </form>
+        </div>
+      </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="muted">No finders yet.</p>
+    <div class="empty" style="padding: 32px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <h3>No finders yet</h3>
+      <p>Add your first finder using the form on the left.</p>
+    </div>
   {% endif %}
-</section>
+</div>
 {% endblock %}

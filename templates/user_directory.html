@@ -1,32 +1,30 @@
 {% extends 'base.html' %}
 
-{% block title %}Users{% endblock %}
-
 {% block content %}
-<section class="hero">
-  <div>
-    <h2>Team directory</h2>
-    <p>Browse the archaeologists and collaborators on this project.</p>
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <div>
+      <h1 class="card-title">Team directory</h1>
+      <p class="card-subtitle">Browse the archaeologists and collaborators on this project</p>
+    </div>
   </div>
-</section>
+</div>
 
-<section class="card-grid">
+<div class="grid three">
   {% for user in users %}
-    <article class="card user-card">
-      <div class="avatar">
-        {% if user.photo_filename %}
-          <img src="{{ url_for('uploaded_file', filename=user.photo_filename) }}" alt="{{ user.name }}" />
-        {% else %}
-          <span>{{ user.name[:1].upper() }}</span>
-        {% endif %}
-      </div>
-      <h3>{{ user.name }}</h3>
-      <p class="muted">{{ user.role }}</p>
-      {% if user.contact %}
-        <p class="muted">{{ user.contact }}</p>
+  <article class="card" style="text-align: center; padding: 28px 20px;">
+    <div class="avatar avatar-lg" style="margin: 0 auto 16px;">
+      {% if user.photo_filename %}
+        <img src="{{ url_for('uploaded_file', filename=user.photo_filename) }}" alt="{{ user.name }}" />
+      {% else %}
+        {{ user.name[:1].upper() }}
       {% endif %}
-      <a class="link" href="{{ url_for('user_profile', user_id=user.id) }}">View profile →</a>
-    </article>
+    </div>
+    <h3 style="font-size: 17px; font-weight: 600; margin-bottom: 4px;">{{ user.name }}</h3>
+    <p class="muted" style="margin-bottom: 4px;">{{ user.role }}</p>
+    {% if user.contact %}<p class="muted" style="margin-bottom: 16px; font-size: 12.5px;">{{ user.contact }}</p>{% endif %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('user_profile', user_id=user.id) }}">View profile</a>
+  </article>
   {% endfor %}
-</section>
+</div>
 {% endblock %}

@@ -3,30 +3,39 @@
 {% block title %}Edit profile{% endblock %}
 
 {% block content %}
-<section class="form-card">
-  <h2>Edit profile</h2>
+<div class="card" style="max-width: 560px;">
+  <div class="card-header">
+    <div>
+      <h1 class="card-title">Edit profile</h1>
+      <p class="card-subtitle">Update your profile information</p>
+    </div>
+  </div>
+
   <form method="post" enctype="multipart/form-data" class="stack">
-    <label>
-      Name
-      <input type="text" name="name" value="{{ profile.name }}" required />
-    </label>
-    <label>
-      Role
-      <input type="text" name="role" value="{{ profile.role }}" />
-    </label>
-    <label>
-      Contact
-      <input type="text" name="contact" value="{{ profile.contact }}" />
-    </label>
-    <label>
-      Bio
-      <textarea name="bio" rows="4">{{ profile.bio }}</textarea>
-    </label>
-    <label>
-      Selfie photo
-      <input type="file" name="photo" accept="image/*" />
-    </label>
-    <button type="submit" class="button">Save profile</button>
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" name="name" id="name" value="{{ profile.name }}" required />
+    </div>
+    <div class="field-row two">
+      <div class="field">
+        <label for="role">Role</label>
+        <input type="text" name="role" id="role" value="{{ profile.role }}" />
+      </div>
+      <div class="field">
+        <label for="contact">Contact</label>
+        <input type="text" name="contact" id="contact" value="{{ profile.contact }}" />
+      </div>
+    </div>
+    <div class="field">
+      <label for="bio">Bio</label>
+      <textarea name="bio" id="bio" rows="4">{{ profile.bio }}</textarea>
+    </div>
+    <div class="field">
+      <label for="photo">Selfie photo</label>
+      <input type="file" name="photo" id="photo" accept="image/*" />
+      <small class="helper">JPG, PNG, WebP. Max {{ max_upload_mb }} MB.</small>
+    </div>
+    <div class="actions"><button type="submit" class="btn btn-primary">Save profile</button></div>
   </form>
-</section>
+</div>
 {% endblock %}
